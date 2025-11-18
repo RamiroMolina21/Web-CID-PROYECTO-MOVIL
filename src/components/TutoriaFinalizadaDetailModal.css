@@ -1,0 +1,226 @@
+.tutoria-finalizada-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.tutoria-finalizada-modal {
+  background: #2d2d2d;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: white;
+}
+
+.tutoria-finalizada-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem;
+  border-bottom: 1px solid #404040;
+}
+
+.tutoria-finalizada-modal-title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+}
+
+.tutoria-finalizada-color-indicator {
+  width: 12px;
+  height: 12px;
+  background: #22c55e;
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+}
+
+.tutoria-finalizada-modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 0.5rem 0;
+}
+
+.tutoria-finalizada-modal-date {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  margin: 0;
+}
+
+.tutoria-finalizada-modal-capacity {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
+.tutoria-finalizada-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tutoria-finalizada-export-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tutoria-finalizada-export-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.tutoria-finalizada-export-btn:disabled {
+  background: #404040;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tutoria-finalizada-close-btn {
+  background: transparent;
+  border: none;
+  color: #a0a0a0;
+  font-size: 1.5rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 300;
+}
+
+.tutoria-finalizada-close-btn:hover {
+  background: #404040;
+  color: white;
+}
+
+.tutoria-finalizada-modal-content {
+  padding: 1.5rem;
+}
+
+.tutoria-finalizada-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  color: white;
+  font-size: 0.9375rem;
+}
+
+.tutoria-finalizada-detail-icon {
+  font-size: 1.125rem;
+  width: 24px;
+  text-align: center;
+}
+
+.tutoria-finalizada-docente-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tutoria-finalizada-docente-name {
+  font-weight: 500;
+  color: white;
+}
+
+.tutoria-finalizada-docente-tipo {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
+
+.tutoria-finalizada-docente-email {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
+
+/* Estilos para la lista de estudiantes */
+.tutoria-finalizada-students-section {
+  margin-top: 1rem;
+  border-top: 1px solid #404040;
+  padding-top: 1rem;
+}
+
+.tutoria-finalizada-students-header {
+  margin-bottom: 0.75rem;
+}
+
+.tutoria-finalizada-students-title {
+  font-size: 0.95rem;
+  margin: 0;
+  color: #e6e6e6;
+}
+
+.tutoria-finalizada-students-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tutoria-finalizada-student-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+}
+
+.student-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.student-name {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.student-meta {
+  font-size: 0.8rem;
+  color: #bdbdbd;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.student-email {
+  color: #a0a0a0;
+}
+
+.no-students {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+

@@ -1,0 +1,225 @@
+.agendar-tutoria-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.agendar-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.horarios-section,
+.tutorias-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.search-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.date-input {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.horarios-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Modal overlay para FormularioTutoria */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 1.5rem;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 760px;
+  background: transparent; /* el propio FormularioTutoria tiene fondo */
+  border-radius: 12px;
+}
+
+.horario-card {
+  background: #f9fafb;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative; /* necesario para posicionar badge de cupos */
+}
+
+.horario-card:hover {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.horario-card.selected {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+}
+
+.horario-badges {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge.available {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge.agendada {
+  background-color: #eef2ff;
+  color: #3730a3;
+}
+
+.badge.selected {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.horario-card h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.horario-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Badge de cupos en la esquina inferior derecha */
+.cupos-badge {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  background: white;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  border: 1px solid #eef2ff;
+}
+
+.cupos-badge::before {
+  margin-right: 0.25rem;
+}
+
+.tutorias-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tutoria-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.tutoria-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tutoria-header h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.tutoria-tema {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.tutoria-details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fbbf24;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+
+
+
+
+

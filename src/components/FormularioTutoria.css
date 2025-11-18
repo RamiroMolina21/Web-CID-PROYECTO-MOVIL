@@ -1,0 +1,169 @@
+.formulario-tutoria {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 1.5rem;
+  color: #1f2937;
+}
+
+.formulario-tutoria.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.formulario-tutoria-header {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px 12px 0 0;
+  margin: -2rem -2rem 1.5rem -2rem;
+}
+
+.formulario-tutoria.modal .formulario-tutoria-header {
+  margin: 0;
+  border-radius: 12px 12px 0 0;
+}
+
+.formulario-tutoria.modal {
+  padding: 0;
+}
+
+.formulario-tutoria.modal .formulario-tutoria-form {
+  padding: 2rem;
+}
+
+.formulario-tutoria-header h2 {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.formulario-tutoria-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group label,
+.formulario-tutoria label {
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-select,
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: white;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.form-select:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+/* Estilos específicos para inputs de fecha y hora */
+.form-input[type="date"],
+.form-input[type="time"] {
+  color: #1f2937 !important;
+}
+
+/* Cambiar color del texto del calendario y reloj */
+.form-input[type="date"]::-webkit-calendar-picker-indicator,
+.form-input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.form-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.form-input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Asegurar que el placeholder también sea gris */
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.form-select::placeholder {
+  color: #9ca3af;
+}
+
+/* Estilos para select options */
+.form-select option {
+  background: white;
+  color: #1f2937;
+}
+
+/* Estilos para inputs deshabilitados */
+.form-input:disabled,
+.form-select:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.form-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.btn-agendar {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+
+.btn-agendar:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-agendar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
