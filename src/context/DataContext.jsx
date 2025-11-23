@@ -26,24 +26,25 @@ export const useData = () => {
 
 // Funciones de mapeo entre API y Frontend
 const mapUsuarioFromAPI = (apiUsuario) => {
-  const nombres = apiUsuario.nombres || apiUsuario.nombre || ''
-  const apellidos = apiUsuario.apellidos || apiUsuario.apellido || ''
+  const nombres = apiUsuario.nombres || apiUsuario.Nombres || apiUsuario.nombre || ''
+  const apellidos = apiUsuario.apellidos || apiUsuario.Apellidos || apiUsuario.apellido || ''
   const nombreCompleto = [nombres, apellidos].filter(Boolean).join(' ').trim() || nombres || apellidos
-  const rolNombre = apiUsuario.tipoRol || apiUsuario.rol || ''
+  // Manejar tanto camelCase como PascalCase para el rol
+  const rolNombre = apiUsuario.tipoRol || apiUsuario.TipoRol || apiUsuario.rol || ''
   const rolId = ROLE_NAME_TO_ID[(rolNombre || '').toLowerCase()] || null
 
   return {
-    id: apiUsuario.idUsuario || apiUsuario.id,
+    id: apiUsuario.idUsuario || apiUsuario.IdUsuario || apiUsuario.id || apiUsuario.Id,
     nombre: nombreCompleto,
     nombres: nombres,
     apellido: apellidos,
     apellidos: apellidos,
-    email: apiUsuario.correo || apiUsuario.email,
-    correo: apiUsuario.correo || apiUsuario.email,
-    telefono: apiUsuario.telefono || '',
-    carrera: apiUsuario.carrera || '',
-    semestre: apiUsuario.semestre || '',
-    notas: apiUsuario.notas || '',
+    email: apiUsuario.correo || apiUsuario.Correo || apiUsuario.email || '',
+    correo: apiUsuario.correo || apiUsuario.Correo || apiUsuario.email || '',
+    telefono: apiUsuario.telefono || apiUsuario.Telefono || '',
+    carrera: apiUsuario.carrera || apiUsuario.Carrera || '',
+    semestre: apiUsuario.semestre || apiUsuario.Semestre || '',
+    notas: apiUsuario.notas || apiUsuario.Notas || '',
     rol: rolNombre || (rolId ? ROLE_ID_TO_NAME[rolId] : 'Estudiante'),
     tipoRol: rolNombre || (rolId ? ROLE_ID_TO_NAME[rolId] : 'Estudiante'),
     rolId: rolId,
@@ -179,6 +180,7 @@ const mapHorarioFromAPI = (apiHorario) => {
     docenteApellidos: usuarioApellidos,
     docenteCorreo: usuarioCorreo,
     disponible: apiHorario.disponible !== undefined ? apiHorario.disponible : true,
+    estado: apiHorario.estado || apiHorario.Estado || 'Disponible',
     cuposDisponibles: parseInt(apiHorario.cupos, 10) || apiHorario.cuposDisponibles || 5,
     tipoClase: apiHorario.tipoClase || 'Presencial',
     salon: apiHorario.espacio || apiHorario.salon || '',
@@ -618,21 +620,44 @@ export const DataProvider = ({ children }) => {
         }),
       ])
 
+      // Log para debug - ver qué está devolviendo la API
+      console.log('Usuarios recibidos de la API:', usuariosData)
+      console.log('Total de usuarios recibidos:', Array.isArray(usuariosData) ? usuariosData.length : 0)
+
       // Separar estudiantes y docentes por tipoRol
+      // Usar tanto tipoRol como TipoRol (PascalCase) para compatibilidad
       const estudiantesList = Array.isArray(usuariosData)
         ? usuariosData
-            .filter(u => (u.tipoRol || u.rol || '').toLowerCase() === 'estudiante')
+            .filter(u => {
+              const rol = (u.tipoRol || u.TipoRol || u.rol || '').toLowerCase()
+              return rol === 'estudiante'
+            })
             .map(mapUsuarioFromAPI)
         : []
       
       const docentesList = Array.isArray(usuariosData)
         ? usuariosData
             .filter(u => {
-              const rol = (u.tipoRol || u.rol || '').toLowerCase()
-              return rol === 'docente' || rol === 'administrador' || rol === 'coordinador'
+              const rol = (u.tipoRol || u.TipoRol || u.rol || '').toLowerCase()
+              return rol === 'docente' || rol === 'administrador' || rol === 'coordinador' || rol === 'tutor'
             })
             .map(mapUsuarioFromAPI)
         : []
+
+      // Log para debug - ver cuántos usuarios se filtraron
+      console.log('Estudiantes filtrados:', estudiantesList.length)
+      console.log('Docentes filtrados:', docentesList.length)
+      
+      // Si hay usuarios que no se filtraron, mostrarlos en consola para debug
+      if (Array.isArray(usuariosData)) {
+        const usuariosSinRol = usuariosData.filter(u => {
+          const rol = (u.tipoRol || u.TipoRol || u.rol || '').toLowerCase()
+          return rol !== 'estudiante' && rol !== 'docente' && rol !== 'administrador' && rol !== 'coordinador' && rol !== 'tutor'
+        })
+        if (usuariosSinRol.length > 0) {
+          console.warn('Usuarios sin rol reconocido o con rol vacío:', usuariosSinRol)
+        }
+      }
 
       setEstudiantes(estudiantesList)
       setDocentes(docentesList)

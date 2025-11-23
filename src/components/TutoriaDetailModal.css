@@ -41,7 +41,7 @@
 .tutoria-color-indicator {
   width: 12px;
   height: 12px;
-  background: #10b981;
+  background: #22c55e;
   border-radius: 3px;
   margin-top: 0.5rem;
   flex-shrink: 0;
@@ -60,17 +60,24 @@
   margin: 0;
 }
 
+.tutoria-modal-capacity {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
 .tutoria-modal-actions {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-.tutoria-action-btn {
+.tutoria-close-btn {
   background: transparent;
   border: none;
   color: #a0a0a0;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   width: 32px;
   height: 32px;
   display: flex;
@@ -79,53 +86,12 @@
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.tutoria-action-btn:hover {
-  background: #404040;
-  color: white;
-}
-
-.tutoria-close-btn {
-  font-size: 1.5rem;
   font-weight: 300;
 }
 
 .tutoria-close-btn:hover {
-  background: #3b82f6;
-  color: white;
-}
-
-.tutoria-more-options {
-  padding: 0.5rem;
-  border-bottom: 1px solid #404040;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.tutoria-option-btn {
-  background: transparent;
-  border: none;
-  color: white;
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9375rem;
-  transition: background 0.2s;
-}
-
-.tutoria-option-btn:hover {
   background: #404040;
-}
-
-.tutoria-option-delete {
-  color: #ef4444;
-}
-
-.tutoria-option-delete:hover {
-  background: #4a1f1f;
+  color: white;
 }
 
 .tutoria-modal-content {
@@ -147,21 +113,86 @@
   text-align: center;
 }
 
-.tutoria-notes {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #404040;
+.tutoria-docente-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.tutoria-notes p {
+.tutoria-docente-name {
+  font-weight: 500;
+  color: white;
+}
+
+.tutoria-docente-tipo {
+  font-size: 0.75rem;
   color: #a0a0a0;
-  font-size: 0.875rem;
-  margin: 0;
-  line-height: 1.5;
 }
 
+.tutoria-docente-email {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
 
+/* Estilos para la lista de estudiantes */
+.tutoria-students-section {
+  margin-top: 1rem;
+  border-top: 1px solid #404040;
+  padding-top: 1rem;
+}
 
+.tutoria-students-header {
+  margin-bottom: 0.75rem;
+}
 
+.tutoria-students-title {
+  font-size: 0.95rem;
+  margin: 0;
+  color: #e6e6e6;
+}
 
+.tutoria-students-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
+.tutoria-student-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+}
+
+.student-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.student-name {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.student-meta {
+  font-size: 0.8rem;
+  color: #bdbdbd;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.student-email {
+  color: #a0a0a0;
+}
+
+.no-students {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin: 0;
+}

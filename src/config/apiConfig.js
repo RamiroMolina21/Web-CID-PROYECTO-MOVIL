@@ -1,6 +1,6 @@
 // Configuración de la API
 // Cambia esta URL por la URL de tu túnel ngrok
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://loculicidally-epiphanic-marcelle.ngrok-free.dev/api'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://uninoculated-groved-marlena.ngrok-free.dev/api'
 
 // Log para debug - puedes eliminarlo después
 console.log('API Base URL:', API_BASE_URL)

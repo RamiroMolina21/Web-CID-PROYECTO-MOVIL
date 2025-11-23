@@ -14,12 +14,34 @@ const Horarios = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('semana')
   
-  // Filtrar datos válidos para evitar errores
+  // Filtrar datos válidos y aplicar filtros de negocio
   const validHorarios = Array.isArray(horarios) 
-    ? horarios.filter(h => h && h.fecha && h.horaInicio && h.horaFin)
+    ? horarios
+        .filter(h => h && h.fecha && h.horaInicio && h.horaFin)
+        .filter(h => {
+          // Filtrar horarios con estado "Ocupado"
+          if (h.estado && h.estado.toLowerCase() === 'ocupado') {
+            return false
+          }
+          // También filtrar si está al límite de capacidad
+          const occupied = tutorias.filter(t => t.horarioId === h.id).length
+          const capacity = h.cuposDisponibles ?? 5
+          if (occupied >= capacity) {
+            return false
+          }
+          return true
+        })
     : []
+  
   const validTutorias = Array.isArray(tutorias)
-    ? tutorias.filter(t => t && t.fecha && t.horaInicio && t.horaFin)
+    ? tutorias
+        .filter(t => t && t.fecha && t.horaInicio && t.horaFin)
+        .filter(t => {
+          // Filtrar tutorías finalizadas
+          const estado = (t.estado || '').toLowerCase()
+          const estadosFinalizados = ['finalizada', 'completada', 'finalizado', 'completado']
+          return !estadosFinalizados.includes(estado)
+        })
     : []
 
   const getWeekDates = () => {
@@ -907,17 +929,29 @@ const Horarios = () => {
               {viewMode === 'año' && currentDate.getFullYear()}
             </span>
           </div>
-          <div className="calendar-actions">
-            <select 
-              value={viewMode} 
-              onChange={(e) => setViewMode(e.target.value)}
-              className="view-select"
-            >
-              <option value="dia">Día</option>
-              <option value="semana">Semana</option>
-              <option value="mes">Mes</option>
-              <option value="año">Año</option>
-            </select>
+          <div className="calendar-header-right">
+            <div className="calendar-legend">
+              <div className="legend-item">
+                <div className="legend-color legend-horario"></div>
+                <span className="legend-text">Horarios</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color legend-tutoria"></div>
+                <span className="legend-text">Tutorías</span>
+              </div>
+            </div>
+            <div className="calendar-actions">
+              <select 
+                value={viewMode} 
+                onChange={(e) => setViewMode(e.target.value)}
+                className="view-select"
+              >
+                <option value="dia">Día</option>
+                <option value="semana">Semana</option>
+                <option value="mes">Mes</option>
+                <option value="año">Año</option>
+              </select>
+            </div>
           </div>
         </div>
 

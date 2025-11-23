@@ -80,6 +80,49 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.calendar-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legend-color.legend-horario {
+  background: #6366f1;
+}
+
+.legend-color.legend-tutoria {
+  background: #10b981;
+}
+
+.legend-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
 .calendar-nav {
   display: flex;
   align-items: center;

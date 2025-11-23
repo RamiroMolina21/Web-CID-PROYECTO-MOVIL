@@ -10,6 +10,7 @@ const Dashboard = () => {
     getTutoriasHoy,
     getHorariosDisponibles,
     estudiantes,
+    docentes,
     tutorias,
     getProximasTutorias,
     getEstudiantesRecientes,
@@ -44,6 +45,12 @@ const Dashboard = () => {
   const horariosDisponibles = getHorariosDisponibles()
   const proximasTutorias = getProximasTutorias()
   const estudiantesRecientes = getEstudiantesRecientes()
+  
+  // Combinar estudiantes y docentes para mostrar usuarios recientes
+  const usuariosRecientes = [
+    ...(Array.isArray(estudiantes) ? estudiantes.slice(-3).reverse() : []),
+    ...(Array.isArray(docentes) ? docentes.slice(-2).reverse() : [])
+  ].slice(0, 5) // Mostrar máximo 5 usuarios
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -192,21 +199,27 @@ const Dashboard = () => {
 
         <div className="dashboard-section">
           <div className="section-header">
-            <h3>Estudiantes Recientes 👥</h3>
+            <h3>Usuarios Recientes 👥</h3>
           </div>
 
           <div className="estudiantes-list">
-            {estudiantesRecientes.map((estudiante) => (
-              <div key={estudiante.id} className="estudiante-card">
-                <div className="estudiante-avatar">
-                  {getInitials(estudiante.nombre)}
+            {usuariosRecientes.length > 0 ? (
+              usuariosRecientes.map((usuario) => (
+                <div key={usuario.id} className="estudiante-card">
+                  <div className="estudiante-avatar">
+                    {getInitials(usuario.nombre)}
+                  </div>
+                  <div className="estudiante-info">
+                    <h4>{usuario.nombre}</h4>
+                    <p>{usuario.email || usuario.correo || 'Sin email'}</p>
+                  </div>
                 </div>
-                <div className="estudiante-info">
-                  <h4>{estudiante.nombre}</h4>
-                  <p>{estudiante.email}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+                No hay usuarios recientes
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -122,33 +122,9 @@ namespace Agendamiento.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
             catch (Exception ex)
             {
-                // Log del error para debugging (en producción, usar un logger apropiado)
-                Console.WriteLine($"Error eliminando tutoría {id}: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                
-                // Si es un error de base de datos relacionado con restricciones de clave foránea
-                if (ex.InnerException != null && 
-                    (ex.InnerException.Message.Contains("FOREIGN KEY") || 
-                     ex.InnerException.Message.Contains("REFERENCE") ||
-                     ex.InnerException.Message.Contains("constraint")))
-                {
-                    return BadRequest(new { 
-                        message = "No se puede eliminar la tutoría porque tiene relaciones asociadas. Por favor, elimine primero los estudiantes asociados." 
-                    });
-                }
-                
-                // Mensaje más descriptivo para otros errores
-                var errorMessage = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new { 
-                    message = "Error interno del servidor al eliminar la tutoría",
-                    details = errorMessage
-                });
+                return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
 

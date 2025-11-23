@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import './TutoriaFinalizadaDetailModal.css'
 import { useData } from '../context/DataContext'
-import { notificacionService, tutoriaService } from '../services/apiService'
+import { notificacionService, tutoriaService, horarioService } from '../services/apiService'
 
 const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
-  const { getDocenteById, getEstudianteById, estudiantes, docentes } = useData()
+  const { getDocenteById, getEstudianteById, estudiantes, docentes, horarios } = useData()
   const [estudiantesTutoria, setEstudiantesTutoria] = useState([])
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(false)
   const [exportando, setExportando] = useState(false)
@@ -39,9 +39,9 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   const horarioEspacio = getProp(tutoria, 'horarioEspacio', 'HorarioEspacio', 'espacio', 'Espacio') || ''
   const horarioHoraInicio = getProp(tutoria, 'horarioHoraInicio', 'HorarioHoraInicio', 'horaInicio', 'HoraInicio')
   const horarioHoraFin = getProp(tutoria, 'horarioHoraFin', 'HorarioHoraFin', 'horaFin', 'HoraFin')
-  const horarioId = getProp(tutoria, 'horarioId', 'HorarioId')
+  const horarioId = getProp(tutoria, 'horarioId', 'HorarioId', 'idHorario', 'IdHorario')
 
-  // Si no se encontró por ID, buscar por correo o nombre/apellidos
+  // Si no se encontró por ID, buscar por correo, nombre/apellidos o desde el horario
   useEffect(() => {
     // Si ya tenemos un usuarioId, usarlo directamente
     if (usuarioId) {
@@ -49,7 +49,44 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
       return
     }
     
-    // Si no tenemos usuarioId, buscar por correo o nombre/apellidos
+    // Si tenemos horarioId, intentar obtener el docenteId desde el horario
+    if (horarioId) {
+      // Primero buscar en el contexto
+      if (horarios && Array.isArray(horarios)) {
+        const horario = horarios.find(h => {
+          const hId = getProp(h, 'id', 'idHorario', 'IdHorario', 'Id')
+          return hId && hId.toString() === horarioId.toString()
+        })
+        
+        if (horario) {
+          // El horario mapeado tiene docenteId directamente
+          const docenteIdDelHorario = getProp(horario, 'docenteId', 'DocenteId', 'usuarioId', 'UsuarioId', 'idUsuario', 'IdUsuario')
+          if (docenteIdDelHorario) {
+            console.log('DocenteId obtenido desde el horario del contexto:', docenteIdDelHorario)
+            setDocenteId(docenteIdDelHorario)
+            return
+          }
+        }
+      }
+      
+      // Si no se encontró en el contexto, intentar obtenerlo desde la API
+      const obtenerHorarioDesdeAPI = async () => {
+        try {
+          const horarioData = await horarioService.getById(horarioId)
+          const docenteIdDelHorario = getProp(horarioData, 'usuarioId', 'UsuarioId', 'docenteId', 'DocenteId', 'idUsuario', 'IdUsuario', 'Usuario_idUsuario')
+          if (docenteIdDelHorario) {
+            console.log('DocenteId obtenido desde el horario de la API:', docenteIdDelHorario)
+            setDocenteId(docenteIdDelHorario)
+          }
+        } catch (error) {
+          console.warn('Error obteniendo horario desde la API:', error)
+        }
+      }
+      
+      obtenerHorarioDesdeAPI()
+    }
+    
+    // Si no tenemos usuarioId ni desde el horario, buscar por correo o nombre/apellidos
     if (docentes && (usuarioCorreo || (usuarioNombre && usuarioApellidos))) {
       // Buscar por correo
       if (usuarioCorreo) {
@@ -75,7 +112,7 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
         }
       }
     }
-  }, [docentes, usuarioCorreo, usuarioNombre, usuarioApellidos, usuarioId])
+  }, [docentes, horarios, usuarioCorreo, usuarioNombre, usuarioApellidos, usuarioId, horarioId])
 
   // Usar el docenteId encontrado o el usuarioId
   const docenteIdFinal = docenteId || usuarioId
@@ -145,26 +182,26 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   })
 
   const handleExportar = async () => {
-    const docenteIdParaExportar = docenteIdFinal
-    
-    if (!tutoriaId || !docenteIdParaExportar) {
-      console.error('Datos faltantes:', { tutoriaId, docenteIdParaExportar, tutoria })
-      alert(`No se pudo obtener la información necesaria para exportar el reporte.\n\nTutoriaId: ${tutoriaId || 'No disponible'}\nDocenteId: ${docenteIdParaExportar || 'No disponible'}\n\nPor favor, verifica que la tutoría tenga la información del docente asociado.`)
+    if (!tutoriaId) {
+      console.error('TutoriaId faltante para exportar:', { tutoriaId, tutoria })
+      alert(`No se pudo obtener la información necesaria para descargar el reporte.\n\nTutoriaId: ${tutoriaId || 'No disponible'}\n\nPor favor, verifica que la tutoría tenga un ID válido.`)
       return
     }
 
-    if (!window.confirm('¿Deseas exportar el reporte en Excel? Se enviará al correo del Administrador.')) {
+    if (!window.confirm('¿Deseas descargar el reporte en Excel?')) {
       return
     }
 
     try {
       setExportando(true)
-      console.log('Exportando reporte con:', { tutoriaId, docenteId: docenteIdParaExportar })
-      await notificacionService.exportarReporteExcel(tutoriaId, docenteIdParaExportar)
-      alert('Reporte exportado exitosamente. Se ha enviado al correo del Administrador.')
+      console.log('Descargando reporte con tutoriaId:', tutoriaId)
+      await notificacionService.exportarReporteExcel(tutoriaId)
+      // El archivo se descarga automáticamente, no necesitamos mostrar un mensaje adicional
+      // pero podemos mostrar uno opcional para confirmar
+      console.log('Reporte descargado exitosamente')
     } catch (error) {
-      console.error('Error exportando reporte:', error)
-      alert(error.message || 'Error al exportar el reporte. Por favor, inténtalo de nuevo.')
+      console.error('Error descargando reporte:', error)
+      alert(error.message || 'Error al descargar el reporte. Por favor, inténtalo de nuevo.')
     } finally {
       setExportando(false)
     }
@@ -193,9 +230,9 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
               className="tutoria-finalizada-export-btn"
               onClick={handleExportar}
               disabled={exportando}
-              title="Exportar reporte Excel"
+              title="Descargar reporte Excel"
             >
-              {exportando ? '⏳' : '📊'} {exportando ? 'Exportando...' : 'Exportar'}
+              {exportando ? '⏳' : '📊'} {exportando ? 'Descargando...' : 'Descargar'}
             </button>
             <button 
               className="tutoria-finalizada-close-btn" 

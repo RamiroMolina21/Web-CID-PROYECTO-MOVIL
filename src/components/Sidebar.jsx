@@ -1,9 +1,12 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import './Sidebar.css'
 
 const Sidebar = () => {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
@@ -13,6 +16,28 @@ const Sidebar = () => {
     { path: '/retroalimentaciones', label: 'Retroalimentaciones', icon: '💬' },
     { path: '/tutorias-finalizadas', label: 'Tutorías Finalizadas', icon: '✅' }
   ]
+
+  const handleLogout = () => {
+    if (window.confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+      logout()
+      navigate('/login')
+    }
+  }
+
+  // Obtener nombre completo del usuario
+  const getNombreCompleto = () => {
+    if (!user) return 'Usuario'
+    const nombres = user.nombres || user.Nombres || ''
+    const apellidos = user.apellidos || user.Apellidos || ''
+    return `${nombres} ${apellidos}`.trim() || user.correo || user.Correo || 'Usuario'
+  }
+
+  // Obtener rol del usuario
+  const getRol = () => {
+    if (!user) return ''
+    const rol = user.tipoRol || user.TipoRol || ''
+    return rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase()
+  }
 
   return (
     <aside className="sidebar">
@@ -40,6 +65,27 @@ const Sidebar = () => {
             </Link>
           ))}
         </nav>
+      </div>
+
+      <div className="sidebar-footer">
+        <div className="user-info">
+          <div className="user-avatar">
+            {getNombreCompleto()
+              .split(' ')
+              .map(n => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2)}
+          </div>
+          <div className="user-details">
+            <div className="user-name">{getNombreCompleto()}</div>
+            <div className="user-role">{getRol()}</div>
+          </div>
+        </div>
+        <button className="logout-button" onClick={handleLogout}>
+          <span className="logout-icon">🚪</span>
+          <span>Cerrar sesión</span>
+        </button>
       </div>
     </aside>
   )

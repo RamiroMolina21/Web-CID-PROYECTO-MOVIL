@@ -79,6 +79,80 @@ const handleResponse = async (response) => {
   }
 }
 
+// Función auxiliar para descargar archivos
+const downloadFile = async (endpoint, filename = null) => {
+  const url = `${API_BASE_URL}${endpoint}`
+  const defaultHeaders = getDefaultHeaders()
+  
+  // Remover Content-Type y Accept para descargas de archivos
+  const headers = { ...defaultHeaders }
+  delete headers['Content-Type']
+  delete headers['Accept']
+  
+  const config = {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit',
+    headers: headers,
+  }
+
+  try {
+    console.log('Downloading file from:', url)
+    const response = await fetch(url, config)
+    
+    if (!response.ok) {
+      // Para errores, intentar obtener un mensaje de error
+      let errorMessage = `Error ${response.status}: ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch (e) {
+        // Si no se puede parsear como JSON, usar el mensaje por defecto
+      }
+      throw new Error(errorMessage)
+    }
+    
+    // Obtener el nombre del archivo del header Content-Disposition si está disponible
+    const contentDisposition = response.headers.get('content-disposition')
+    let downloadFilename = filename
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (filenameMatch && filenameMatch[1]) {
+        downloadFilename = filenameMatch[1].replace(/['"]/g, '')
+        // Decodificar si viene codificado
+        if (downloadFilename.startsWith("UTF-8''")) {
+          downloadFilename = decodeURIComponent(downloadFilename.replace("UTF-8''", ''))
+        }
+      }
+    }
+    
+    // Si no hay nombre de archivo, usar uno por defecto
+    if (!downloadFilename) {
+      downloadFilename = `reporte_${Date.now()}.xlsx`
+    }
+    
+    // Convertir la respuesta a blob
+    const blob = await response.blob()
+    
+    // Crear un enlace temporal para descargar
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = downloadFilename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(downloadUrl)
+    
+    console.log('File downloaded successfully:', downloadFilename)
+    return { success: true, filename: downloadFilename }
+  } catch (error) {
+    console.error('Error downloading file:', error)
+    throw error
+  }
+}
+
 // Función auxiliar para hacer peticiones
 const request = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`
@@ -149,10 +223,10 @@ const request = async (endpoint, options = {}) => {
 
 // ==================== AUTH ====================
 export const authService = {
-  login: async (email, password) => {
+  login: async (correo, contrasena) => {
     const response = await request('/Auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ Correo: correo, Contrasena: contrasena }),
     })
     
     // Guardar token si viene en la respuesta
@@ -354,11 +428,9 @@ export const notificacionService = {
     })
   },
 
-  // Exportar reporte Excel por email
-  exportarReporteExcel: async (tutoriaId, docenteId) => {
-    return request(`/Notificacion/email/reporte-excel/${tutoriaId}/docente/${docenteId}`, {
-      method: 'POST',
-    })
+  // Descargar reporte Excel
+  exportarReporteExcel: async (tutoriaId) => {
+    return downloadFile(`/Notificacion/reporte-excel/${tutoriaId}`)
   },
 }
 
