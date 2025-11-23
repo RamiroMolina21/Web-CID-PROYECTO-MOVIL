@@ -1,14 +1,9 @@
 import React, { useState } from 'react'
 import './HorarioDetailModal.css'
 import { useData } from '../context/DataContext'
-import AgregarEstudianteModal from './AgregarEstudianteModal'
 
 const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
-  const { getDocenteById, tutorias, getEstudianteById, loadData, tutoriaService, estudiantes, docentes, eliminarEstudianteDeTutoria, deleteTutoria } = useData()
-  const [showAgregarEstudiante, setShowAgregarEstudiante] = useState(false)
-  const [estudiantesPorTutoria, setEstudiantesPorTutoria] = useState({})
-  const [loadingEstudiantes, setLoadingEstudiantes] = useState(false)
-  const [eliminandoEstudiante, setEliminandoEstudiante] = useState(null)
+  const { getDocenteById, tutorias, docentes, deleteTutoria, loadData } = useData()
   const [eliminandoTutoria, setEliminandoTutoria] = useState(null)
   
   if (!horario) return null
@@ -41,110 +36,19 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
 
   // Tutorías asignadas a este horario
   const assignedTutorias = tutorias ? tutorias.filter(t => t.horarioId === horario.id) : []
-
-  // Cargar estudiantes de cada tutoría cuando se monta el componente o cambian las tutorías
-  React.useEffect(() => {
-    const cargarEstudiantes = async () => {
-      if (assignedTutorias.length === 0) {
-        setEstudiantesPorTutoria({})
-        return
-      }
-      
-      setLoadingEstudiantes(true)
-      const estudiantesMap = {}
-      
-      try {
-        await Promise.all(
-          assignedTutorias.map(async (tutoria) => {
-            try {
-              const estudiantesData = await tutoriaService.getEstudiantesByTutoria(tutoria.id)
-              if (Array.isArray(estudiantesData)) {
-                // El endpoint devuelve UsuarioResponseDto con IdUsuario
-                estudiantesMap[tutoria.id] = estudiantesData.map(e => e.idUsuario || e.IdUsuario || e.id).filter(Boolean)
-              }
-            } catch (error) {
-              console.warn(`Error cargando estudiantes de tutoría ${tutoria.id}:`, error)
-              // Si hay estudiantesIds en la tutoría, usarlos como fallback
-              if (tutoria.estudiantesIds && tutoria.estudiantesIds.length > 0) {
-                estudiantesMap[tutoria.id] = tutoria.estudiantesIds
-              } else if (tutoria.estudianteId) {
-                // Si solo tiene un estudianteId, usarlo
-                estudiantesMap[tutoria.id] = [tutoria.estudianteId]
-              }
-            }
-          })
-        )
-        setEstudiantesPorTutoria(estudiantesMap)
-      } catch (error) {
-        console.error('Error cargando estudiantes:', error)
-      } finally {
-        setLoadingEstudiantes(false)
-      }
-    }
-    
-    cargarEstudiantes()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignedTutorias.map(t => t.id).join(',')])
-
-  // Obtener todos los estudiantes únicos de todas las tutorías del horario
+  
+  // Calcular cupos ocupados
   const todosEstudiantesIds = React.useMemo(() => {
     const ids = new Set()
     assignedTutorias.forEach(tutoria => {
-      if (estudiantesPorTutoria[tutoria.id]) {
-        estudiantesPorTutoria[tutoria.id].forEach(id => ids.add(id))
-      } else if (tutoria.estudiantesIds && tutoria.estudiantesIds.length > 0) {
+      if (tutoria.estudiantesIds && tutoria.estudiantesIds.length > 0) {
         tutoria.estudiantesIds.forEach(id => ids.add(id))
       } else if (tutoria.estudianteId) {
         ids.add(tutoria.estudianteId)
       }
     })
     return Array.from(ids)
-  }, [assignedTutorias, estudiantesPorTutoria])
-
-  // Crear un mapa de estudianteId -> tutoriaId para saber de qué tutoría eliminar
-  const estudianteATutoriaMap = React.useMemo(() => {
-    const map = new Map()
-    assignedTutorias.forEach(tutoria => {
-      const estudiantesIds = estudiantesPorTutoria[tutoria.id] || tutoria.estudiantesIds || (tutoria.estudianteId ? [tutoria.estudianteId] : [])
-      estudiantesIds.forEach(estId => {
-        // Si un estudiante está en múltiples tutorías, usar la primera encontrada
-        if (!map.has(estId)) {
-          map.set(estId, tutoria.id)
-        }
-      })
-    })
-    return map
-  }, [assignedTutorias, estudiantesPorTutoria])
-
-  const handleEliminarEstudiante = async (estudianteId) => {
-    const tutoriaId = estudianteATutoriaMap.get(estudianteId)
-    if (!tutoriaId) {
-      alert('No se pudo determinar la tutoría del estudiante')
-      return
-    }
-
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este estudiante de la tutoría?')) {
-      return
-    }
-
-    try {
-      setEliminandoEstudiante(estudianteId)
-      await eliminarEstudianteDeTutoria(tutoriaId, estudianteId)
-      // Recargar estudiantes después de eliminar
-      const estudiantesMap = { ...estudiantesPorTutoria }
-      if (estudiantesMap[tutoriaId]) {
-        estudiantesMap[tutoriaId] = estudiantesMap[tutoriaId].filter(id => id !== estudianteId)
-        setEstudiantesPorTutoria(estudiantesMap)
-      }
-      // Recargar datos completos para asegurar consistencia
-      await loadData()
-    } catch (error) {
-      console.error('Error eliminando estudiante:', error)
-      alert(error.message || 'Error al eliminar el estudiante')
-    } finally {
-      setEliminandoEstudiante(null)
-    }
-  }
+  }, [assignedTutorias])
 
   const handleDeleteTutorias = async () => {
     if (assignedTutorias.length === 0) {
@@ -289,98 +193,6 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
               </div>
             </div>
           )}
-          {/* Lista de estudiantes agendados para este horario */}
-          <div className="horario-students-section">
-            <div className="horario-students-header">
-              <h3 className="horario-students-title">Estudiantes agendados</h3>
-              <button
-                className="horario-add-student-btn"
-                onClick={() => setShowAgregarEstudiante(true)}
-                disabled={(() => {
-                  const capacity = horario.cuposDisponibles || 5
-                  return todosEstudiantesIds.length >= capacity
-                })()}
-                title={(() => {
-                  const capacity = horario.cuposDisponibles || 5
-                  return todosEstudiantesIds.length >= capacity ? 'Cupo máximo alcanzado' : 'Agregar estudiante'
-                })()}
-              >
-                + Agregar estudiante
-              </button>
-            </div>
-            {loadingEstudiantes ? (
-              <p className="no-students">Cargando estudiantes...</p>
-            ) : todosEstudiantesIds.length > 0 ? (
-              <ul className="horario-students-list">
-                {todosEstudiantesIds.map((estudianteId) => {
-                  const estudiante = getEstudianteById(estudianteId)
-                  if (!estudiante) {
-                    // Si no se encuentra, intentar buscar en la lista de estudiantes directamente
-                    const estudianteDirecto = estudiantes?.find(e => e.id === estudianteId)
-                    if (!estudianteDirecto) {
-                      return null // No mostrar si no se encuentra
-                    }
-                    return (
-                      <li key={estudianteId} className="horario-student-item">
-                        <div className="student-main">
-                          <div className="student-name">{estudianteDirecto.nombre || `Estudiante ID: ${estudianteId}`}</div>
-                          <div className="student-meta">
-                            {estudianteDirecto.email && <span className="student-email">{estudianteDirecto.email}</span>}
-                            {estudianteDirecto.telefono && <span className="student-phone">{estudianteDirecto.telefono}</span>}
-                          </div>
-                        </div>
-                        <div className="student-actions">
-                          <div className="student-time">
-                            {assignedTutorias.length > 0 ? assignedTutorias[0].horaInicio : ''}
-                          </div>
-                          <button
-                            className="student-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEliminarEstudiante(estudianteId)
-                            }}
-                            disabled={eliminandoEstudiante === estudianteId}
-                            title="Eliminar estudiante"
-                          >
-                            {eliminandoEstudiante === estudianteId ? '⏳' : '🗑️'}
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  }
-                  return (
-                    <li key={estudianteId} className="horario-student-item">
-                      <div className="student-main">
-                        <div className="student-name">{estudiante.nombre}</div>
-                        <div className="student-meta">
-                          {estudiante.email && <span className="student-email">{estudiante.email}</span>}
-                          {estudiante.telefono && <span className="student-phone">{estudiante.telefono}</span>}
-                        </div>
-                      </div>
-                      <div className="student-actions">
-                        <div className="student-time">
-                          {assignedTutorias.length > 0 ? assignedTutorias[0].horaInicio : ''}
-                        </div>
-                        <button
-                          className="student-delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleEliminarEstudiante(estudianteId)
-                          }}
-                          disabled={eliminandoEstudiante === estudianteId}
-                          title="Eliminar estudiante"
-                        >
-                          {eliminandoEstudiante === estudianteId ? '⏳' : '🗑️'}
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <p className="no-students">No hay estudiantes asignados a este horario.</p>
-            )}
-          </div>
           <div className="horario-detail-item">
             <span className="horario-detail-icon">🔒</span>
             <span>{horario.disponible ? 'Disponible' : 'No disponible'}</span>
@@ -392,17 +204,6 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
           )}
         </div>
       </div>
-
-      {showAgregarEstudiante && (
-        <AgregarEstudianteModal
-          horario={horario}
-          onClose={() => setShowAgregarEstudiante(false)}
-          onSuccess={async () => {
-            // Recargar datos para reflejar los cambios
-            await loadData()
-          }}
-        />
-      )}
     </div>
   )
 }

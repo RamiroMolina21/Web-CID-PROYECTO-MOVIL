@@ -6,7 +6,7 @@ import HorarioDetailModal from '../components/HorarioDetailModal'
 import './Horarios.css'
 
 const Horarios = () => {
-  const { tutorias, horarios, deleteHorario, getEstudianteById, loading, error } = useData()
+  const { tutorias, horarios, deleteHorario, loading, error } = useData()
   const [showHorarioForm, setShowHorarioForm] = useState(false)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
   const [selectedHorario, setSelectedHorario] = useState(null)
@@ -37,10 +37,18 @@ const Horarios = () => {
     ? tutorias
         .filter(t => t && t.fecha && t.horaInicio && t.horaFin)
         .filter(t => {
-          // Filtrar tutorías finalizadas
+          // Solo mostrar tutorías con estados pendiente, programada o activa
           const estado = (t.estado || '').toLowerCase()
-          const estadosFinalizados = ['finalizada', 'completada', 'finalizado', 'completado']
-          return !estadosFinalizados.includes(estado)
+          const estadosPermitidos = [
+            'pendiente', 
+            'programada', 
+            'programado',
+            'activa', 
+            'activo',
+            'en curso',
+            'en_curso'
+          ]
+          return estadosPermitidos.includes(estado)
         })
     : []
 
@@ -466,15 +474,13 @@ const Horarios = () => {
                           }
                         })}
 
-                      {/* Mostrar solo tutorías que NO están vinculadas a un horario */}
+                      {/* Mostrar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
                       {slotTutorias
-                        .filter(tutoria => tutoria && !tutoria.horarioId && tutoria.horaInicio)
+                        .filter(tutoria => tutoria && tutoria.horaInicio)
                         .map((tutoria) => {
                           try {
                             const duration = calculateDuration(tutoria.horaInicio, tutoria.horaFin, tutoria.fecha)
-                            const horaParts = tutoria.horaInicio ? tutoria.horaInicio.split(':') : ['0', '0']
-                            const minutos = horaParts[1] ? parseInt(horaParts[1]) : 0
-                            const marginTop = isNaN(minutos) ? 0 : (minutos / 60) * 70
+                            const absoluteTop = calculateAbsoluteTop(tutoria.horaInicio)
                             
                             return (
                               <div 
@@ -482,12 +488,15 @@ const Horarios = () => {
                                 className="tutoria-block"
                                 style={{ 
                                   height: `${duration}px`,
-                                  marginTop: `${marginTop}px`,
-                                  zIndex: 1
+                                  top: `${absoluteTop}px`,
+                                  zIndex: tutoria.horarioId ? 2 : 1
                                 }}
                                 onClick={() => handleTutoriaClick(tutoria)}
                               >
-                                <div className="tutoria-title">{tutoria.tema || tutoria.materia || 'Tutoría'}</div>
+                                <div className="tutoria-title">
+                                  {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
+                                  {tutoria.horarioId && <span className="tutoria-horario-badge"> (Horario)</span>}
+                                </div>
                                 <div className="tutoria-time">
                                   {tutoria.horaInicio} - {tutoria.horaFin}
                                 </div>
@@ -597,47 +606,44 @@ const Horarios = () => {
                         }
                       })}
                     
+                    {/* Renderizar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
+                    {tutoriasDelDia
+                      .filter(tutoria => tutoria && tutoria.horaInicio)
+                      .map((tutoria) => {
+                        try {
+                          const duration = calculateDuration(tutoria.horaInicio, tutoria.horaFin, tutoria.fecha)
+                          const absoluteTop = calculateAbsoluteTop(tutoria.horaInicio)
+                          
+                          return (
+                            <div 
+                              key={tutoria.id} 
+                              className="tutoria-block"
+                              style={{ 
+                                height: `${duration}px`,
+                                top: `${absoluteTop}px`,
+                                zIndex: tutoria.horarioId ? 2 : 1
+                              }}
+                              onClick={() => handleTutoriaClick(tutoria)}
+                            >
+                              <div className="tutoria-title">
+                                {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
+                                {tutoria.horarioId && <span className="tutoria-horario-badge"> (Horario)</span>}
+                              </div>
+                              <div className="tutoria-time">
+                                {tutoria.horaInicio} - {tutoria.horaFin}
+                              </div>
+                            </div>
+                          )
+                        } catch (error) {
+                          console.warn('Error renderizando tutoria en semana:', error, tutoria)
+                          return null
+                        }
+                      })}
+                    
                     {/* Renderizar time-slots para la estructura del grid */}
-                    {hours.map((hour) => {
-                      try {
-                        const slotTutorias = getTutoriasForTimeSlot(date, hour)
-                        return (
-                          <div key={hour} className="time-slot">
-                            {/* Mostrar solo tutorías que NO están vinculadas a un horario */}
-                            {slotTutorias
-                              .filter(tutoria => tutoria && !tutoria.horarioId && tutoria.horaInicio)
-                              .map((tutoria) => {
-                                try {
-                                  const duration = calculateDuration(tutoria.horaInicio, tutoria.horaFin, tutoria.fecha)
-                                  const horaParts = tutoria.horaInicio ? tutoria.horaInicio.split(':') : ['0', '0']
-                                  const minutos = horaParts[1] ? parseInt(horaParts[1]) : 0
-                                  const marginTop = isNaN(minutos) ? 0 : (minutos / 60) * 60
-                                  
-                                  return (
-                                    <div 
-                                      key={tutoria.id} 
-                                      className="tutoria-block"
-                                      style={{ 
-                                        height: `${duration}px`,
-                                        marginTop: `${marginTop}px`
-                                      }}
-                                      onClick={() => handleTutoriaClick(tutoria)}
-                                    >
-                                      <div className="tutoria-title">{tutoria.tema || tutoria.materia || 'Tutoría'}</div>
-                                    </div>
-                                  )
-                                } catch (error) {
-                                  console.warn('Error renderizando tutoria en semana:', error, tutoria)
-                                  return null
-                                }
-                              })}
-                          </div>
-                        )
-                      } catch (error) {
-                        console.error('Error renderizando hora en semana:', error, hour)
-                        return <div key={hour} className="time-slot"></div>
-                      }
-                    })}
+                    {hours.map((hour) => (
+                      <div key={hour} className="time-slot"></div>
+                    ))}
                   </div>
                 )
               } catch (error) {
@@ -705,16 +711,16 @@ const Horarios = () => {
                       </div>
                     )
                   })}
-                  {/* Mostrar solo tutorías que NO están vinculadas a un horario */}
+                  {/* Mostrar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
                   {tutoriasForDate
-                    .filter(tutoria => !tutoria.horarioId)
                     .map((tutoria) => (
                       <div 
                         key={tutoria.id} 
                         className="month-tutoria-label"
                         onClick={() => handleTutoriaClick(tutoria)}
                       >
-                        {tutoria.tema || tutoria.materia || 'Tutoría'}
+                        {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
+                        {tutoria.horarioId && <span className="month-tutoria-horario-badge"> (H)</span>}
                       </div>
                     ))}
                 </div>

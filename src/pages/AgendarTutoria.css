@@ -314,6 +314,30 @@
   flex-wrap: wrap;
 }
 
+.tutoria-agregar-estudiante-btn {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tutoria-agregar-estudiante-btn:hover {
+  background: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.tutoria-agregar-estudiante-btn:active {
+  transform: translateY(0);
+}
+
 .tutoria-header h4 {
   font-size: 1rem;
   font-weight: 600;

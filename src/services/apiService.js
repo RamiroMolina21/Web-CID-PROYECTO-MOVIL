@@ -14,6 +14,9 @@ const handleResponse = async (response) => {
       errorMessage = `404 Not Found: El endpoint ${response.url} no existe. Verifica la URL de la API.`
     } else if (response.status === 403) {
       errorMessage = '403 Forbidden: Acceso denegado. Verifica los permisos de CORS en tu API .NET. Asegúrate de que CORS permita el origen de tu aplicación React.'
+    } else if (response.status === 500) {
+      // Mensaje genérico para 500, se reemplazará si hay un mensaje específico del servidor
+      errorMessage = '500 Error interno del servidor. El servidor encontró un error al procesar la solicitud.'
     } else if (response.status === 0) {
       errorMessage = 'Error de CORS: No se pudo conectar con la API. Verifica que: 1) La API .NET tenga CORS configurado correctamente, 2) ngrok esté corriendo, 3) La URL de la API sea correcta.'
     }

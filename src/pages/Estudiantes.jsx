@@ -51,7 +51,23 @@ const Estudiantes = () => {
           await deleteDocente(id)
         }
       } catch (error) {
-        alert(`Error: ${error.message || 'No se pudo eliminar el usuario'}`)
+        // Mensaje de error más descriptivo
+        let errorMessage = 'No se pudo eliminar el usuario.'
+        
+        if (error.response?.status === 500) {
+          // Si el error viene del servidor con un mensaje específico, usarlo
+          if (error.response?.data?.message) {
+            errorMessage = error.response.data.message
+          } else {
+            errorMessage = 'Error interno del servidor. El usuario podría tener tutorías, notificaciones u otros registros asociados que impiden su eliminación. Por favor, elimina primero los registros relacionados.'
+          }
+        } else if (error.response?.status === 404) {
+          errorMessage = 'El usuario no fue encontrado.'
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        
+        alert(`Error: ${errorMessage}`)
       }
     }
   }
@@ -147,16 +163,10 @@ const Estudiantes = () => {
                   <span>{usuario.email || usuario.correo}</span>
                 </div>
                 {usuario.tipo === 'estudiante' && (
-                  <>
-                    <div className="detail-item">
-                      <span className="detail-icon">📞</span>
-                      <span>{usuario.telefono || 'N/A'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">📚</span>
-                      <span>{usuario.carrera || 'N/A'}</span>
-                    </div>
-                  </>
+                  <div className="detail-item">
+                    <span className="detail-icon">👤</span>
+                    <span>Rol: {usuario.rol || 'Estudiante'}</span>
+                  </div>
                 )}
                 {usuario.tipo === 'docente' && (
                   <div className="detail-item">

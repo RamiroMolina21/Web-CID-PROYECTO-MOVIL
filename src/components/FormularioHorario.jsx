@@ -187,45 +187,6 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
               </div>
 
               <div className="form-group">
-                <label>Hora de Fin *</label>
-                <div className="input-with-icon">
-                  <input
-                    type="time"
-                    name="horaFin"
-                    value={formData.horaFin}
-                    onChange={handleChange}
-                    required
-                  />
-                  <span className="input-icon">🕐</span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Docente / Tutor</label>
-                <div className="input-with-icon">
-                  <select
-                    name="docenteId"
-                    value={formData.docenteId}
-                    onChange={handleChange}
-                  >
-                    <option value="">-- Seleccionar --</option>
-                    {docentes && docentes.length > 0 ? (
-                      docentes.map(d => (
-                        <option key={d.id} value={d.id}>
-                          {d.nombre || (d.nombres && d.apellidos ? `${d.nombres} ${d.apellidos}`.trim() : d.nombres || `Docente ${d.id}`)} {d.rol ? `(${d.rol})` : ''}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">No hay docentes disponibles</option>
-                    )}
-                  </select>
-                  <span className="input-icon">👩‍🏫</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="form-column">
-              <div className="form-group">
                 <label>Fecha Fin *</label>
                 <div className="input-with-icon">
                   <input
@@ -253,6 +214,22 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
                   <span className="input-icon">🕐</span>
                 </div>
               </div>
+            </div>
+
+            <div className="form-column">
+              <div className="form-group">
+                <label>Hora de Fin *</label>
+                <div className="input-with-icon">
+                  <input
+                    type="time"
+                    name="horaFin"
+                    value={formData.horaFin}
+                    onChange={handleChange}
+                    required
+                  />
+                  <span className="input-icon">🕐</span>
+                </div>
+              </div>
 
               <div className="form-group">
                 <label>Cupos Disponibles</label>
@@ -269,7 +246,7 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
               </div>
 
               <div className="form-group">
-                <label>Salón *</label>
+                <label>Aula *</label>
                 <div className="input-with-icon">
                   <input
                     type="text"
@@ -280,6 +257,29 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
                     required
                   />
                   <span className="input-icon">📍</span>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Docente / Tutor</label>
+                <div className="input-with-icon">
+                  <select
+                    name="docenteId"
+                    value={formData.docenteId}
+                    onChange={handleChange}
+                  >
+                    <option value="">-- Seleccionar --</option>
+                    {docentes && docentes.length > 0 ? (
+                      docentes.map(d => (
+                        <option key={d.id} value={d.id}>
+                          {d.nombre || (d.nombres && d.apellidos ? `${d.nombres} ${d.apellidos}`.trim() : d.nombres || `Docente ${d.id}`)} {d.rol ? `(${d.rol})` : ''}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No hay docentes disponibles</option>
+                    )}
+                  </select>
+                  <span className="input-icon">👩‍🏫</span>
                 </div>
               </div>
             </div>

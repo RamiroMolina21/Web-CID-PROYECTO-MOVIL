@@ -2,12 +2,14 @@ import React, { useState } from 'react'
 import { useData } from '../context/DataContext'
 import FormularioTutoria from '../components/FormularioTutoria'
 import TutoriaDetailModal from '../components/TutoriaDetailModal'
+import AgregarEstudianteATutoriaModal from '../components/AgregarEstudianteATutoriaModal'
 import './AgendarTutoria.css'
 
 const AgendarTutoria = () => {
-  const { horarios, getHorariosDisponibles, tutorias, getEstudianteById, getDocenteById } = useData()
+  const { horarios, getHorariosDisponibles, tutorias, getDocenteById, loadData } = useData()
   const [selectedHorario, setSelectedHorario] = useState(null)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
+  const [tutoriaParaAgregarEstudiante, setTutoriaParaAgregarEstudiante] = useState(null)
   const [searchDate, setSearchDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchTutoriaQuery, setSearchTutoriaQuery] = useState('')
@@ -193,15 +195,6 @@ const AgendarTutoria = () => {
               </p>
             ) : (
               tutoriasAgendadas.map((tutoria) => {
-                // Obtener estudiantes de la tutoría
-                const estudiantesIds = tutoria.estudiantesIds && tutoria.estudiantesIds.length > 0
-                  ? tutoria.estudiantesIds
-                  : (tutoria.estudianteId ? [tutoria.estudianteId] : [])
-                
-                const estudiantes = estudiantesIds
-                  .map(id => getEstudianteById(id))
-                  .filter(Boolean)
-                
                 const docente = tutoria.docenteId ? getDocenteById(tutoria.docenteId) : null
                 
                 // Determinar el color del badge según el estado
@@ -230,6 +223,16 @@ const AgendarTutoria = () => {
                       <span className={getStatusBadgeClass(tutoria.estado)}>
                         {tutoria.estado || 'Pendiente'}
                       </span>
+                      <button
+                        className="tutoria-agregar-estudiante-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setTutoriaParaAgregarEstudiante(tutoria)
+                        }}
+                        title="Agregar estudiante"
+                      >
+                        ➕ Agregar Estudiante
+                      </button>
                     </div>
                     <p className="tutoria-tema">
                       <strong>{tutoria.idioma || ''} {tutoria.nivel || ''}</strong>
@@ -260,6 +263,20 @@ const AgendarTutoria = () => {
             // Aquí puedes agregar lógica para editar si es necesario
             console.log('Editar tutoría:', tutoria)
             setSelectedTutoria(null)
+          }}
+        />
+      )}
+
+      {tutoriaParaAgregarEstudiante && (
+        <AgregarEstudianteATutoriaModal
+          tutoria={tutoriaParaAgregarEstudiante}
+          onClose={() => setTutoriaParaAgregarEstudiante(null)}
+          onSuccess={async () => {
+            // Recargar datos para actualizar la lista de tutorías
+            if (loadData) {
+              await loadData()
+            }
+            setTutoriaParaAgregarEstudiante(null)
           }}
         />
       )}

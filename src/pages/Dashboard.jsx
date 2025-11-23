@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { metricasService } from '../services/apiService'
 import './Dashboard.css'
 
 const Dashboard = () => {
-  const navigate = useNavigate()
   const {
     getTutoriasHoy,
     getHorariosDisponibles,
     estudiantes,
     docentes,
     tutorias,
-    getProximasTutorias,
-    getEstudiantesRecientes,
-    getEstudianteById,
     loading,
     error
   } = useData()
@@ -43,8 +38,6 @@ const Dashboard = () => {
 
   const tutoriasHoy = getTutoriasHoy()
   const horariosDisponibles = getHorariosDisponibles()
-  const proximasTutorias = getProximasTutorias()
-  const estudiantesRecientes = getEstudiantesRecientes()
   
   // Combinar estudiantes y docentes para mostrar usuarios recientes
   const usuariosRecientes = [
@@ -52,11 +45,6 @@ const Dashboard = () => {
     ...(Array.isArray(docentes) ? docentes.slice(-2).reverse() : [])
   ].slice(0, 5) // Mostrar máximo 5 usuarios
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`
-  }
 
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -169,31 +157,90 @@ const Dashboard = () => {
       <div className="dashboard-content">
         <div className="dashboard-section">
           <div className="section-header">
-            <h3>Próximas Tutorías ↗</h3>
-            <button className="btn-primary" onClick={() => navigate('/agendar-tutoria')}>
-              Agendar Nueva
-            </button>
+            <h3>Tutorías Finalizadas por Mes 📊</h3>
           </div>
 
-          <div className="tutorias-list">
-            {proximasTutorias.map((tutoria) => {
-              const estudiante = getEstudianteById(tutoria.estudianteId)
-              if (!estudiante) return null
+          <div className="chart-container">
+            {(() => {
+              // Obtener tutorías finalizadas
+              const tutoriasFinalizadas = tutorias.filter(t => {
+                const estado = (t.estado || '').toLowerCase()
+                return estado === 'finalizada' || estado === 'completada' || estado === 'finalizado' || estado === 'completado'
+              })
+
+              // Agrupar por mes
+              const tutoriasPorMes = {}
+              const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
               
+              tutoriasFinalizadas.forEach(tutoria => {
+                if (!tutoria.fecha) return
+                try {
+                  const fecha = new Date(tutoria.fecha + 'T00:00:00')
+                  const mes = fecha.getMonth()
+                  const año = fecha.getFullYear()
+                  const clave = `${año}-${mes}`
+                  
+                  if (!tutoriasPorMes[clave]) {
+                    tutoriasPorMes[clave] = {
+                      mes: mes,
+                      año: año,
+                      count: 0
+                    }
+                  }
+                  tutoriasPorMes[clave].count++
+                } catch (e) {
+                  console.warn('Error procesando fecha de tutoría:', tutoria.fecha, e)
+                }
+              })
+
+              // Obtener los últimos 12 meses
+              const hoy = new Date()
+              const ultimos12Meses = []
+              for (let i = 11; i >= 0; i--) {
+                const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
+                const mes = fecha.getMonth()
+                const año = fecha.getFullYear()
+                const clave = `${año}-${mes}`
+                ultimos12Meses.push({
+                  mes: mes,
+                  año: año,
+                  nombre: meses[mes],
+                  clave: clave,
+                  count: tutoriasPorMes[clave]?.count || 0
+                })
+              }
+
+              const maxCount = Math.max(...ultimos12Meses.map(m => m.count), 1)
+
               return (
-                <div key={tutoria.id} className="tutoria-card">
-                  <div className="tutoria-info">
-                    <h4>{estudiante.nombre}</h4>
-                    <p className="tutoria-tema">{tutoria.tema}</p>
-                    <div className="tutoria-details">
-                      <span>📅 {formatDate(tutoria.fecha)}</span>
-                      <span>🕐 {tutoria.horaInicio} - {tutoria.horaFin}</span>
-                    </div>
+                <div className="chart-wrapper">
+                  <div className="chart-bars">
+                    {ultimos12Meses.map((mesData, index) => (
+                      <div key={index} className="chart-bar-container">
+                        <div className="chart-bar-wrapper">
+                          <div 
+                            className="chart-bar"
+                            style={{ 
+                              height: `${(mesData.count / maxCount) * 100}%`,
+                              minHeight: mesData.count > 0 ? '4px' : '0'
+                            }}
+                            title={`${mesData.nombre} ${mesData.año}: ${mesData.count} tutoría${mesData.count !== 1 ? 's' : ''}`}
+                          >
+                            {mesData.count > 0 && (
+                              <span className="chart-bar-value">{mesData.count}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="chart-label">{mesData.nombre}</div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="status-badge pending">{tutoria.estado}</span>
+                  <div className="chart-footer">
+                    <p>Total: {tutoriasFinalizadas.length} tutorías finalizadas</p>
+                  </div>
                 </div>
               )
-            })}
+            })()}
           </div>
         </div>
 

@@ -8,10 +8,6 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
     nombre: '',
     apellido: '',
     email: '',
-    telefono: '',
-    semestre: '',
-    carrera: '',
-    notas: '',
   })
 
   useEffect(() => {
@@ -23,10 +19,6 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
         nombre: nombres,
         apellido: apellidos,
         email: estudiante.email || estudiante.correo || '',
-        telefono: estudiante.telefono || '',
-        semestre: estudiante.semestre || '',
-        carrera: estudiante.carrera || '',
-        notas: estudiante.notas || '',
       })
     }
   }, [estudiante])
@@ -96,54 +88,6 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
               placeholder="ejemplo@correo.com"
               required
               className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Teléfono</label>
-            <input
-              type="tel"
-              name="telefono"
-              value={formData.telefono}
-              onChange={handleChange}
-              placeholder="+52 123 456 7890"
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Semestre</label>
-            <input
-              type="text"
-              name="semestre"
-              value={formData.semestre}
-              onChange={handleChange}
-              placeholder="Ej: 5to Semestre"
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Carrera / Programa</label>
-            <input
-              type="text"
-              name="carrera"
-              value={formData.carrera}
-              onChange={handleChange}
-              placeholder="Ej: Ingeniería en Sistemas"
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Notas Adicionales</label>
-            <textarea
-              name="notas"
-              value={formData.notas}
-              onChange={handleChange}
-              placeholder="Información adicional sobre el estudiante..."
-              rows="4"
-              className="form-textarea"
             />
           </div>
 

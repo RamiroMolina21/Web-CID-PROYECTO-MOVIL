@@ -1074,20 +1074,6 @@ export const DataProvider = ({ children }) => {
     })
   }
 
-  const getProximasTutorias = () => {
-    const today = new Date().toISOString().split('T')[0]
-    return tutorias
-      .filter(t => {
-        const tutoriaDate = t.fecha ? t.fecha.split('T')[0] : t.fecha
-        return tutoriaDate >= today
-      })
-      .sort((a, b) => {
-        if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha)
-        return (a.horaInicio || '').localeCompare(b.horaInicio || '')
-      })
-      .slice(0, 5)
-  }
-
   const getEstudiantesRecientes = () => {
     return estudiantes.slice(-5).reverse()
   }
@@ -1118,7 +1104,6 @@ export const DataProvider = ({ children }) => {
     getTutoriaById,
     getHorariosDisponibles,
     getTutoriasHoy,
-    getProximasTutorias,
     getEstudiantesRecientes,
     tutoriaService
   }

@@ -340,6 +340,20 @@
   opacity: 0.9;
 }
 
+.tutoria-horario-badge {
+  font-size: 0.625rem;
+  opacity: 0.8;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.month-tutoria-horario-badge {
+  font-size: 0.625rem;
+  opacity: 0.8;
+  font-weight: 400;
+  font-style: italic;
+}
+
 /* Week View */
 .calendar-week-view {
   position: relative;
