@@ -1,19 +1,20 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import './Sidebar.css'
 
 const Sidebar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
 
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/horarios', label: 'Horarios', icon: '🕐' },
     { path: '/agendar-tutoria', label: 'Agendar Tutoría', icon: '📅' },
     { path: '/estudiantes', label: 'Usuarios', icon: '👥' },
-    { path: '/retroalimentaciones', label: 'Retroalimentaciones', icon: '💬' },
     { path: '/tutorias-finalizadas', label: 'Tutorías Finalizadas', icon: '✅' }
   ]
 
@@ -82,6 +83,10 @@ const Sidebar = () => {
             <div className="user-role">{getRol()}</div>
           </div>
         </div>
+        <button type="button" className="theme-toggle" onClick={toggleTheme}>
+          <span>{theme === 'light' ? '🌙' : '☀️'}</span>
+          <span>{theme === 'light' ? 'Modo oscuro' : 'Modo claro'}</span>
+        </button>
         <button className="logout-button" onClick={handleLogout}>
           <span className="logout-icon">🚪</span>
           <span>Cerrar sesión</span>

@@ -1,13 +1,13 @@
 .formulario-tutoria {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 2rem;
   margin-top: 1.5rem;
-  color: #1f2937;
+  color: var(--text-heading);
 }
 
 .formulario-tutoria.modal {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   width: 100%;
   max-width: 600px;
@@ -65,7 +65,7 @@
 
 .form-group label,
 .formulario-tutoria label {
-  color: #374151;
+  color: var(--text-label);
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -75,11 +75,11 @@
 .form-textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 0.875rem;
-  background: white;
-  color: #1f2937;
+  background: var(--bg-card);
+  color: var(--text-heading);
   transition: all 0.2s;
 }
 
@@ -88,13 +88,13 @@
 .form-textarea:focus {
   outline: none;
   border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Estilos específicos para inputs de fecha y hora */
 .form-input[type="date"],
 .form-input[type="time"] {
-  color: #1f2937 !important;
+  color: var(--text-heading) !important;
 }
 
 /* Cambiar color del texto del calendario y reloj */
@@ -112,24 +112,24 @@
 
 /* Asegurar que el placeholder también sea gris */
 .form-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .form-select::placeholder {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 /* Estilos para select options */
 .form-select option {
-  background: white;
-  color: #1f2937;
+  background: var(--bg-card);
+  color: var(--text-heading);
 }
 
 /* Estilos para inputs deshabilitados */
 .form-input:disabled,
 .form-select:disabled {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   cursor: not-allowed;
 }
 

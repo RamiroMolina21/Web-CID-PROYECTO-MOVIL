@@ -69,6 +69,10 @@ const TutoriasFinalizadas = () => {
       modalidad.includes(query) ||
       usuarioNombre.includes(query)
     )
+  }).sort((a, b) => {
+    const fechaA = getProp(a, 'fechaTutoria', 'fecha', 'FechaTutoria', 'Fecha') || ''
+    const fechaB = getProp(b, 'fechaTutoria', 'fecha', 'FechaTutoria', 'Fecha') || ''
+    return fechaB.localeCompare(fechaA)
   })
 
   const formatDate = (dateString) => {
@@ -142,10 +146,6 @@ const TutoriasFinalizadas = () => {
         <div className="stat-card">
           <div className="stat-value">{tutoriasFinalizadas.length}</div>
           <div className="stat-label">Total Tutorías Finalizadas</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{filteredTutorias.length}</div>
-          <div className="stat-label">Mostrando</div>
         </div>
       </div>
 

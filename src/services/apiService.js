@@ -483,6 +483,33 @@ export const retroalimentacionService = {
   },
 }
 
+// ==================== ENCUESTAS ====================
+export const encuestaService = {
+  // Verificar token antes de mostrar el formulario
+  verificarToken: async (token) => {
+    return request(`/Encuesta/verificar/${token}`)
+  },
+
+  // Enviar respuesta de encuesta (sin Authorization — endpoint público)
+  responder: async (data) => {
+    return request('/Encuesta/responder', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    })
+  },
+
+  // Obtener encuestas de una tutoría
+  getByTutoria: async (tutoriaId) => {
+    return request(`/Encuesta/tutoria/${tutoriaId}`)
+  },
+
+  // Estadísticas para el dashboard
+  getEstadisticas: async () => {
+    return request('/Encuesta/estadisticas')
+  },
+}
+
 // ==================== MÉTRICAS ====================
 export const metricasService = {
   // Obtener métricas generales

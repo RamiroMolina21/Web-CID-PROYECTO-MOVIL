@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import cecarLogo from '../img/cecarlogo.png'
 import './Login.css'
 
@@ -10,6 +11,7 @@ const Login = () => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -29,6 +31,9 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      <button type="button" className="theme-toggle theme-toggle-floating" onClick={toggleTheme}>
+        {theme === 'light' ? '🌙 Modo oscuro' : '☀️ Modo claro'}
+      </button>
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">

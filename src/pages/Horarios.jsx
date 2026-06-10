@@ -6,13 +6,13 @@ import HorarioDetailModal from '../components/HorarioDetailModal'
 import './Horarios.css'
 
 const Horarios = () => {
-  const { tutorias, horarios, deleteHorario, loading, error } = useData()
+  const { tutorias, horarios, deleteHorario, loading, error, getDocenteById, docentes } = useData()
   const [showHorarioForm, setShowHorarioForm] = useState(false)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
   const [selectedHorario, setSelectedHorario] = useState(null)
   const [horarioToEdit, setHorarioToEdit] = useState(null)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState('semana')
+  const [viewMode, setViewMode] = useState('mes')
   
   // Filtrar datos válidos y aplicar filtros de negocio
   const validHorarios = Array.isArray(horarios) 
@@ -403,6 +403,110 @@ const Horarios = () => {
     return date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear()
   }
 
+  // Función helper para obtener el nombre del docente de un horario
+  const getDocenteNombreFromHorario = (horario) => {
+    if (!horario) return 'Docente'
+    
+    // Intentar obtener docente por ID
+    let docente = null
+    if (horario.docenteId) {
+      docente = getDocenteById(Number(horario.docenteId) || horario.docenteId)
+    }
+    
+    // Si no se encontró por ID, buscar por correo
+    if (!docente && horario.docenteCorreo && docentes) {
+      docente = docentes.find(d => (d.email || d.correo)?.toLowerCase() === horario.docenteCorreo.toLowerCase())
+    }
+    
+    // Si aún no se encontró, buscar por nombre y apellidos
+    if (!docente && horario.docenteNombre && horario.docenteApellidos && docentes) {
+      docente = docentes.find(d => {
+        const nombreMatch = (d.nombres || d.nombre || '').toLowerCase() === horario.docenteNombre.toLowerCase()
+        const apellidosMatch = (d.apellidos || d.apellido || '').toLowerCase() === horario.docenteApellidos.toLowerCase()
+        return nombreMatch && apellidosMatch
+      })
+    }
+    
+    // Formatear nombre del docente
+    if (docente) {
+      return docente.nombre || (docente.nombres && docente.apellidos 
+        ? `${docente.nombres} ${docente.apellidos}`.trim() 
+        : docente.nombres || 'Docente')
+    }
+    
+    // Si hay información del docente en el horario directamente
+    if (horario.docenteNombre && horario.docenteApellidos) {
+      return `${horario.docenteNombre} ${horario.docenteApellidos}`.trim()
+    }
+    
+    return horario.docenteNombre || 'Docente'
+  }
+
+  // Función helper para obtener el nombre del docente de una tutoría
+  const getDocenteNombreFromTutoria = (tutoria) => {
+    if (!tutoria) return 'Docente'
+    
+    // Intentar obtener docente por ID (puede ser docenteId, usuarioId, etc.)
+    let docente = null
+    const docenteId = tutoria.docenteId || tutoria.usuarioId || tutoria.idDocente
+    if (docenteId) {
+      docente = getDocenteById(Number(docenteId) || docenteId)
+    }
+    
+    // Si no se encontró por ID, buscar por correo
+    if (!docente && tutoria.docenteCorreo && docentes) {
+      docente = docentes.find(d => (d.email || d.correo)?.toLowerCase() === tutoria.docenteCorreo.toLowerCase())
+    }
+    
+    // Si aún no se encontró, buscar por nombre y apellidos
+    if (!docente && tutoria.docenteNombre && tutoria.docenteApellidos && docentes) {
+      docente = docentes.find(d => {
+        const nombreMatch = (d.nombres || d.nombre || '').toLowerCase() === tutoria.docenteNombre.toLowerCase()
+        const apellidosMatch = (d.apellidos || d.apellido || '').toLowerCase() === tutoria.docenteApellidos.toLowerCase()
+        return nombreMatch && apellidosMatch
+      })
+    }
+    
+    // Si la tutoría tiene un horarioId, obtener el docente del horario
+    if (!docente && tutoria.horarioId && horarios) {
+      const horario = horarios.find(h => h.id === tutoria.horarioId)
+      if (horario) {
+        return getDocenteNombreFromHorario(horario)
+      }
+    }
+    
+    // Formatear nombre del docente
+    if (docente) {
+      return docente.nombre || (docente.nombres && docente.apellidos 
+        ? `${docente.nombres} ${docente.apellidos}`.trim() 
+        : docente.nombres || 'Docente')
+    }
+    
+    // Si hay información del docente en la tutoría directamente
+    if (tutoria.docenteNombre && tutoria.docenteApellidos) {
+      return `${tutoria.docenteNombre} ${tutoria.docenteApellidos}`.trim()
+    }
+    
+    return tutoria.docenteNombre || 'Docente'
+  }
+
+  // Función helper para obtener el tema de una tutoría
+  const getTemaFromTutoria = (tutoria) => {
+    if (!tutoria) return ''
+    return tutoria.tema || tutoria.materia || tutoria.idioma || ''
+  }
+
+  // Función helper para obtener el texto completo de una tutoría (docente + tema)
+  const getTutoriaDisplayText = (tutoria) => {
+    const docenteNombre = getDocenteNombreFromTutoria(tutoria)
+    const tema = getTemaFromTutoria(tutoria)
+    
+    if (tema) {
+      return `${docenteNombre} - ${tema}`
+    }
+    return docenteNombre
+  }
+
   const renderDayView = () => {
     try {
       const dates = getDayDates()
@@ -457,7 +561,7 @@ const Horarios = () => {
                                 }}
                                 onClick={() => handleHorarioClick(horario)}
                               >
-                                <div className="horario-title">{horario.titulo || 'Horario'}</div>
+                                <div className="horario-title">{getDocenteNombreFromHorario(horario)}</div>
                                 {tutoriasDelHorario.length > 0 && (
                                   <div className="horario-cupos-info">
                                     {cuposOcupados}/{cuposTotal} cupos
@@ -494,8 +598,8 @@ const Horarios = () => {
                                 onClick={() => handleTutoriaClick(tutoria)}
                               >
                                 <div className="tutoria-title">
-                                  {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
-                                  {tutoria.horarioId && <span className="tutoria-horario-badge"> (Horario)</span>}
+                                  {getTutoriaDisplayText(tutoria)}
+                                  {tutoria.horarioId && <span className="tutoria-horario-badge"> (H)</span>}
                                 </div>
                                 <div className="tutoria-time">
                                   {tutoria.horaInicio} - {tutoria.horaFin}
@@ -626,8 +730,8 @@ const Horarios = () => {
                               onClick={() => handleTutoriaClick(tutoria)}
                             >
                               <div className="tutoria-title">
-                                {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
-                                {tutoria.horarioId && <span className="tutoria-horario-badge"> (Horario)</span>}
+                                {getDocenteNombreFromTutoria(tutoria)}
+                                {tutoria.horarioId && <span className="tutoria-horario-badge"> (H)</span>}
                               </div>
                               <div className="tutoria-time">
                                 {tutoria.horaInicio} - {tutoria.horaFin}
@@ -699,12 +803,12 @@ const Horarios = () => {
                     const cuposTotal = horario.cuposDisponibles || 5
                     
                     return (
-                      <div
+                      <div 
                         key={`h-${horario.id}`}
                         className="month-horario-label"
                         onClick={() => handleHorarioClick(horario)}
                       >
-                        {horario.titulo || 'Horario'}
+                        {getDocenteNombreFromHorario(horario)}
                         {tutoriasDelHorario.length > 0 && (
                           <span className="month-cupos-badge"> {cuposOcupados}/{cuposTotal}</span>
                         )}
@@ -719,7 +823,7 @@ const Horarios = () => {
                         className="month-tutoria-label"
                         onClick={() => handleTutoriaClick(tutoria)}
                       >
-                        {tutoria.tema || tutoria.materia || tutoria.idioma || 'Tutoría'}
+                        {getTutoriaDisplayText(tutoria)}
                         {tutoria.horarioId && <span className="month-tutoria-horario-badge"> (H)</span>}
                       </div>
                     ))}
@@ -783,30 +887,65 @@ const Horarios = () => {
                       <div 
                         key={dateIdx} 
                         className={`year-day-cell ${!isCurrentMonthDate ? 'other-month' : ''} ${isTodayDate ? 'today' : ''}`}
+                        onClick={() => {
+                          // Cambiar a vista de semana y mostrar la fecha seleccionada
+                          setCurrentDate(new Date(date))
+                          setViewMode('semana')
+                        }}
                       >
-                        <div className="year-day-number-inner">
+                        <div className="year-day-number-wrapper">
                           {isTodayDate ? (
                             <div className="year-day-badge">{formatDateNumber(date)}</div>
                           ) : (
                             <div className="year-day-number-text">{formatDateNumber(date)}</div>
                           )}
-                          <div className="year-day-dots">
+                        </div>
+                        {(tutoriasForDate.length > 0 || horariosForDate.length > 0) && (
+                          <div className="year-day-indicators">
                             {tutoriasForDate.length > 0 && (
-                              <button
-                                className="year-day-dot tutoria"
-                                title={`${tutoriasForDate.length} tutoría(s)`}
-                                onClick={() => handleTutoriaClick(tutoriasForDate[0])}
-                              />
+                              <div
+                                className="year-day-indicator tutoria-indicator"
+                                title={`${tutoriasForDate.length} tutoría(s) - Click para ver detalles`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  // Cambiar a vista de semana primero, luego abrir el modal
+                                  setCurrentDate(new Date(date))
+                                  setViewMode('semana')
+                                  // Pequeño delay para que la vista cambie primero
+                                  setTimeout(() => {
+                                    handleTutoriaClick(tutoriasForDate[0])
+                                  }, 100)
+                                }}
+                              >
+                                <span className="indicator-dot tutoria-dot"></span>
+                                {tutoriasForDate.length > 1 && (
+                                  <span className="indicator-count">{tutoriasForDate.length}</span>
+                                )}
+                              </div>
                             )}
                             {horariosForDate.length > 0 && (
-                              <button
-                                className="year-day-dot horario"
-                                title={`${horariosForDate.length} horario(s)`}
-                                onClick={() => handleHorarioClick(horariosForDate[0])}
-                              />
+                              <div
+                                className="year-day-indicator horario-indicator"
+                                title={`${horariosForDate.length} horario(s) - Click para ver detalles`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  // Cambiar a vista de semana primero, luego abrir el modal
+                                  setCurrentDate(new Date(date))
+                                  setViewMode('semana')
+                                  // Pequeño delay para que la vista cambie primero
+                                  setTimeout(() => {
+                                    handleHorarioClick(horariosForDate[0])
+                                  }, 100)
+                                }}
+                              >
+                                <span className="indicator-dot horario-dot"></span>
+                                {horariosForDate.length > 1 && (
+                                  <span className="indicator-count">{horariosForDate.length}</span>
+                                )}
+                              </div>
                             )}
                           </div>
-                        </div>
+                        )}
                       </div>
                     )
                   } catch (error) {

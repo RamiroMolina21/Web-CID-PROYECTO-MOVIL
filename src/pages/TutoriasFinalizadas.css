@@ -1,7 +1,7 @@
 .tutorias-finalizadas-page {
   max-width: 100%;
   margin: 0 auto;
-  background: white;
+  background: var(--bg-card);
   padding: 2rem;
 }
 
@@ -15,13 +15,13 @@
 .page-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
 .page-header p {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .btn-primary {
@@ -43,10 +43,10 @@
 
 .error-message {
   padding: 20px;
-  background: #fee;
-  border: 1px solid #fcc;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 8px;
-  color: #c33;
+  color: var(--error-text);
   margin-top: 20px;
 }
 
@@ -57,12 +57,12 @@
 
 /* Search Section */
 .search-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .search-group {
@@ -74,23 +74,23 @@
 .search-group label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .search-input {
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 0.9375rem;
-  color: #1f2937;
-  background: white;
+  color: var(--text-heading);
+  background: var(--bg-card);
   transition: border-color 0.2s;
 }
 
 .search-input:focus {
   outline: none;
   border-color: #7b42f6;
-  box-shadow: 0 0 0 3px rgba(123, 66, 246, 0.1);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Stats Section */
@@ -102,11 +102,11 @@
 }
 
 .stat-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
   text-align: center;
 }
 
@@ -119,7 +119,7 @@
 
 .stat-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -131,11 +131,11 @@
 }
 
 .tutoria-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
@@ -151,19 +151,19 @@
   align-items: flex-start;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .tutoria-card-title-section h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-heading);
   margin: 0 0 0.25rem 0;
 }
 
 .tutoria-card-subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .info-icon {
@@ -216,9 +216,9 @@
   grid-column: 1 / -1;
   text-align: center;
   padding: 4rem 2rem;
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .empty-icon {
@@ -229,13 +229,13 @@
 .empty-state h3 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
 .empty-state p {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 /* Responsive */

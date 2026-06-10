@@ -13,13 +13,13 @@
 .page-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
 .page-header p {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .header-buttons {
@@ -46,7 +46,7 @@
 }
 
 .btn-secondary {
-  background: white;
+  background: var(--bg-card);
   color: #7b42f6;
   border: 1px solid #7b42f6;
   padding: 0.75rem 1.5rem;
@@ -59,7 +59,7 @@
 }
 
 .btn-secondary:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .search-bar {
@@ -71,17 +71,17 @@
   width: 100%;
   padding: 0.75rem 1rem;
   padding-left: 3rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   font-size: 1rem;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-input:focus {
   outline: none;
   border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .search-icon {
@@ -100,10 +100,10 @@
 }
 
 .estudiante-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   display: flex;
   gap: 1rem;
   position: relative;
@@ -130,14 +130,14 @@
 .estudiante-info h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
 .estudiante-id {
   display: inline-block;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -157,7 +157,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .detail-icon {
@@ -166,7 +166,7 @@
 
 .estudiante-notas {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-style: italic;
   margin-top: 0.5rem;
 }
@@ -193,28 +193,28 @@
 }
 
 .btn-edit {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-hover);
+  color: var(--text-label);
 }
 
 .btn-edit:hover {
-  background: #e5e7eb;
+  background: var(--border-color);
 }
 
 .btn-delete {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 
 .btn-delete:hover {
-  background: #fecaca;
+  background: var(--logout-hover);
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem;
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 

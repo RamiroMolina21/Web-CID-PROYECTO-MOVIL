@@ -1,7 +1,7 @@
 .horarios-page {
   max-width: 100%;
   margin: 0 auto;
-  background: white;
+  background: var(--bg-card);
 }
 
 .page-header {
@@ -14,13 +14,13 @@
 .page-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
 .page-header p {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .header-buttons {
@@ -47,7 +47,7 @@
 }
 
 .btn-secondary {
-  background: white;
+  background: var(--bg-card);
   color: #7b42f6;
   border: 1px solid #7b42f6;
   padding: 0.75rem 1.5rem;
@@ -60,15 +60,15 @@
 }
 
 .btn-secondary:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .calendar-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .calendar-header {
@@ -77,7 +77,7 @@
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .calendar-header-right {
@@ -91,9 +91,9 @@
   align-items: center;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
-  background: #f9fafb;
+  background: var(--bg-muted);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .legend-item {
@@ -119,7 +119,7 @@
 
 .legend-text {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -130,14 +130,14 @@
 }
 
 .nav-btn {
-  background: #f3f4f6;
+  background: var(--bg-hover);
   border: none;
   width: 32px;
   height: 32px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 1.25rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +145,7 @@
 }
 
 .nav-btn:hover {
-  background: #e5e7eb;
+  background: var(--border-color);
 }
 
 .today-btn {
@@ -157,7 +157,7 @@
 
 .date-range {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   min-width: 200px;
   text-align: center;
   font-weight: 500;
@@ -165,10 +165,10 @@
 
 .view-select {
   padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  background: white;
-  color: #4b5563;
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.875rem;
 }
@@ -185,7 +185,7 @@
   top: 0;
   left: 0;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   padding: 0.5rem;
 }
 
@@ -200,7 +200,7 @@
 
 .day-of-week {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
 }
 
@@ -212,7 +212,7 @@
   justify-content: center;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-heading);
   border-radius: 50%;
 }
 
@@ -225,14 +225,14 @@
   display: flex;
   flex: 1;
   gap: 1px;
-  background: #e5e7eb;
-  border: 1px solid #e5e7eb;
+  background: var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .calendar-time-column {
-  background: white;
+  background: var(--bg-card);
   width: 80px;
 }
 
@@ -240,9 +240,9 @@
   padding: 0.75rem;
   text-align: center;
   font-size: 0.875rem;
-  color: #6b7280;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
   height: 60px;
   display: flex;
   align-items: center;
@@ -250,7 +250,7 @@
 }
 
 .calendar-day-column {
-  background: white;
+  background: var(--bg-card);
   flex: 1;
   position: relative;
   overflow: visible;
@@ -258,8 +258,8 @@
 
 .time-slot {
   height: 60px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
   position: relative;
   padding: 0.25rem;
   overflow: visible;
@@ -363,26 +363,26 @@
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
-  border: 1px solid #e5e7eb;
+  background: var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px 8px 0 0;
   overflow: hidden;
   margin-bottom: 1px;
 }
 
 .calendar-timezone-header {
-  background: white;
+  background: var(--bg-card);
   padding: 1rem;
   text-align: center;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .calendar-day-header {
-  background: white;
+  background: var(--bg-card);
   padding: 1rem;
   text-align: center;
   display: flex;
@@ -394,25 +394,25 @@
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
-  border: 1px solid #e5e7eb;
+  background: var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 0 0 8px 8px;
   overflow: hidden;
 }
 
 /* Month View */
 .calendar-month-view {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .calendar-month-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .month-day-header {
@@ -420,7 +420,7 @@
   text-align: center;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
 }
 
@@ -428,19 +428,19 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
+  background: var(--border-color);
 }
 
 .month-day-cell {
-  background: white;
+  background: var(--bg-card);
   min-height: 100px;
   padding: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   position: relative;
 }
 
 .month-day-cell.other-month {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .month-day-cell.today .month-day-number {
@@ -457,7 +457,7 @@
 .month-day-number {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.5rem;
 }
 
@@ -517,16 +517,21 @@
 }
 
 .year-month {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+  max-height: 320px;
 }
 
 .year-month-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-heading);
   margin-bottom: 0.75rem;
   text-align: center;
 }
@@ -541,78 +546,160 @@
 .year-day-header {
   text-align: center;
   font-size: 0.625rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .year-month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
   gap: 0.25rem;
+  flex: 1;
+  min-height: 240px;
+  height: 240px;
 }
 
 .year-day-cell {
   aspect-ratio: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   font-size: 0.75rem;
-  color: #1f2937;
+  color: var(--text-heading);
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  min-height: 28px;
+  padding: 0.375rem 0.25rem;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .year-day-cell.other-month {
-  color: #9ca3af;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.year-day-cell.other-month .year-day-indicator {
+  opacity: 0.7;
 }
 
 .year-day-cell.today {
-  background: #3b82f6;
-  color: white;
-  border-radius: 50%;
+  background: transparent;
+  color: var(--text-heading);
+  border-radius: 4px;
   font-weight: 600;
 }
 
+.year-day-cell.today .year-day-badge {
+  background: #3b82f6;
+  color: white;
+}
+
 .year-day-cell:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
+  transform: scale(1.02);
 }
 
 .year-day-cell.other-month:hover {
-  background: transparent;
+  background: rgba(243, 244, 246, 0.5);
+  opacity: 0.8;
 }
 
-/* Dots for events inside year cells */
-.year-day-number-inner {
+/* Number wrapper for year day cells */
+.year-day-number-wrapper {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 2;
+  position: relative;
 }
-.year-day-dots {
-  display: inline-flex;
-  gap: 6px;
-  margin-left: 6px;
-}
-.year-day-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-.year-day-dot.tutoria { background: #10b981; }
-.year-day-dot.horario { background: #6366f1; }
 
-/* Small centered badge for today's number in year view */
+/* Indicators container */
+.year-day-indicators {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 100%;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+  z-index: 3;
+  position: relative;
+}
+
+.year-day-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 18px;
+  height: 18px;
+  padding: 0.125rem 0.25rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 0.5px solid rgba(0, 0, 0, 0.05);
+}
+
+.year-day-indicator:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.year-day-indicator.tutoria-indicator:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.year-day-indicator.horario-indicator:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.indicator-dot.tutoria-dot {
+  background: #10b981;
+}
+
+.indicator-dot.horario-dot {
+  background: #6366f1;
+}
+
+.indicator-count {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  line-height: 1;
+  min-width: 10px;
+  text-align: center;
+  margin-left: 0.125rem;
+}
+
+/* Badge for today's number in year view */
 .year-day-badge {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #3b82f6;
   color: white;
@@ -621,18 +708,20 @@
   justify-content: center;
   font-weight: 600;
   font-size: 0.75rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  flex-shrink: 0;
+  user-select: none;
+  pointer-events: none;
 }
 .year-day-number-text {
   font-size: 0.75rem;
   color: inherit;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  user-select: none;
+  pointer-events: none;
 }
 
-.year-day-number-inner {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
+/* Remove old year-day-number-inner styles as we're using year-day-content now */
 

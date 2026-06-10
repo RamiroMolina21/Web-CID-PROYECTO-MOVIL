@@ -7,16 +7,41 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
   const isEditing = !!tutoria
   const hasDocentes = docentes && docentes.length > 0
   
+  // Detectar si es un horario recurrente
+  const esRecurrente = horario?.esRecurrente || false
+  const fechasDisponibles = horario?.fechasDisponibles || []
+  const todosLosHorarios = horario?.todosLosHorarios || []
+  
+  const [horarioSeleccionadoId, setHorarioSeleccionadoId] = useState(null)
+  const [agendarTodasLasFechas, setAgendarTodasLasFechas] = useState(false)
+  
   const [formData, setFormData] = useState({
     docenteId: tutoria?.docenteId || horario?.docenteId || '',
     tema: tutoria?.tema || '',
     idioma: tutoria?.idioma || '',
     nivel: tutoria?.nivel || '',
     modalidad: tutoria?.modalidad || '',
-    fecha: tutoria?.fecha || horario?.fecha || new Date().toISOString().split('T')[0],
+    fecha: tutoria?.fecha || (esRecurrente && fechasDisponibles.length > 0 ? fechasDisponibles[0] : horario?.fecha) || new Date().toISOString().split('T')[0],
     horaInicio: tutoria?.horaInicio || horario?.horaInicio || '09:00',
     horaFin: tutoria?.horaFin || horario?.horaFin || '10:00'
   })
+  
+  // Inicializar y actualizar el horario seleccionado
+  useEffect(() => {
+    if (tutoria?.horarioId) {
+      setHorarioSeleccionadoId(tutoria.horarioId)
+    } else if (!esRecurrente && horario?.id) {
+      setHorarioSeleccionadoId(horario.id)
+    } else if (esRecurrente && formData.fecha && todosLosHorarios.length > 0) {
+      const horarioParaFecha = todosLosHorarios.find(h => {
+        const horarioDate = new Date(h.fecha).toISOString().split('T')[0]
+        return horarioDate === formData.fecha
+      })
+      if (horarioParaFecha) {
+        setHorarioSeleccionadoId(horarioParaFecha.id)
+      }
+    }
+  }, [formData.fecha, esRecurrente, todosLosHorarios, horario, tutoria])
 
   useEffect(() => {
     if (tutoria) {
@@ -53,8 +78,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       return
     }
 
-    // Validar que haya un horario seleccionado
-    const targetHorarioId = horario?.id || tutoria?.horarioId || null
+    // Obtener el ID del horario correcto (puede ser el seleccionado por fecha si es recurrente)
+    const targetHorarioId = horarioSeleccionadoId || horario?.id || tutoria?.horarioId || null
     if (!targetHorarioId) {
       alert('Por favor selecciona un horario para agendar la tutoría')
       return
@@ -85,7 +110,78 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           horaFin: formData.horaFin
         })
       } else {
-        const targetHorarioId = horario?.id || tutoria?.horarioId
+        // Si es recurrente y se quiere agendar en todas las fechas
+        if (esRecurrente && agendarTodasLasFechas && fechasDisponibles.length > 0) {
+          // Validar capacidad para todas las fechas antes de agendar
+          const fechasParaAgendar = fechasDisponibles.filter(fecha => {
+            const horarioParaFecha = todosLosHorarios.find(h => {
+              const horarioDate = new Date(h.fecha).toISOString().split('T')[0]
+              return horarioDate === fecha
+            })
+            if (!horarioParaFecha) return false
+            
+            const occupied = tutorias.filter(t => t.horarioId === horarioParaFecha.id).length
+            const capacity = horarioParaFecha.cuposDisponibles || 5
+            return occupied < capacity
+          })
+          
+          if (fechasParaAgendar.length === 0) {
+            alert('No hay fechas disponibles para agendar. Todas las fechas ya están ocupadas.')
+            return
+          }
+          
+          // Crear tutorías para todas las fechas disponibles
+          const tutoriasCreadas = []
+          for (const fecha of fechasParaAgendar) {
+            const horarioParaFecha = todosLosHorarios.find(h => {
+              const horarioDate = new Date(h.fecha).toISOString().split('T')[0]
+              return horarioDate === fecha
+            })
+            
+            if (!horarioParaFecha) continue
+            
+            // Verificar capacidad y si ya tiene tutorías antes de crear
+            const tutoriasEnHorario = tutorias.filter(t => t.horarioId === horarioParaFecha.id)
+            const occupied = tutoriasEnHorario.length
+            const capacity = horarioParaFecha.cuposDisponibles || 5
+            const tieneTutoria = tutoriasEnHorario.length > 0
+            
+            // Omitir si está llena o ya tiene una tutoría asignada
+            if (occupied >= capacity || tieneTutoria) {
+              console.warn(`La fecha ${fecha} ya está ocupada o tiene tutoría asignada, se omite`)
+              continue
+            }
+            
+            try {
+              const nuevaTutoria = await addTutoria({
+                docenteId: parseInt(formData.docenteId),
+                horarioId: horarioParaFecha.id,
+                tema: formData.tema,
+                idioma: formData.idioma,
+                nivel: formData.nivel,
+                modalidad: formData.modalidad,
+                fecha: fecha,
+                horaInicio: formData.horaInicio,
+                horaFin: formData.horaFin
+              })
+              tutoriasCreadas.push(nuevaTutoria)
+            } catch (error) {
+              console.error(`Error creando tutoría para fecha ${fecha}:`, error)
+              // Continuar con las demás fechas aunque una falle
+            }
+          }
+          
+          if (tutoriasCreadas.length === 0) {
+            alert('No se pudo agendar ninguna tutoría. Por favor verifica las fechas disponibles.')
+            return
+          }
+          
+          alert(`Se han agendado ${tutoriasCreadas.length} tutoría(s) exitosamente en las fechas disponibles.`)
+          onClose() // Cerrar el modal después de agendar todas las tutorías
+          return
+        } else {
+          // Usar el horario seleccionado por fecha si es recurrente
+          const targetHorarioId = horarioSeleccionadoId || horario?.id || tutoria?.horarioId
         if (!targetHorarioId) {
           alert('Por favor selecciona un horario para agendar la tutoría')
           return
@@ -102,6 +198,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           horaInicio: formData.horaInicio,
           horaFin: formData.horaFin
         })
+        }
       }
       onClose()
     } catch (error) {
@@ -141,6 +238,91 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
 
         <div className="form-group">
           <label>Fecha *</label>
+          {esRecurrente && fechasDisponibles.length > 0 ? (
+            <>
+              {!agendarTodasLasFechas && (
+                <select
+                  name="fecha"
+                  value={formData.fecha}
+                  onChange={handleChange}
+                  required
+                  className="form-select"
+                >
+                  <option value="">Selecciona una fecha</option>
+                {fechasDisponibles.map((fecha) => {
+                  const horarioParaFecha = todosLosHorarios.find(h => {
+                    const horarioDate = new Date(h.fecha).toISOString().split('T')[0]
+                    return horarioDate === fecha
+                  })
+                  if (!horarioParaFecha) return null
+                  
+                  const tutoriasEnHorario = tutorias.filter(t => t.horarioId === horarioParaFecha.id)
+                  const occupied = tutoriasEnHorario.length
+                  const capacity = horarioParaFecha.cuposDisponibles || 5
+                  const tieneTutoria = tutoriasEnHorario.length > 0
+                  const disponible = occupied < capacity && !tieneTutoria
+                  
+                  if (!disponible) return null
+                    
+                    const dateObj = new Date(fecha + 'T00:00:00')
+                    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+                    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                    const fechaFormateada = `${days[dateObj.getDay()]}, ${dateObj.getDate()} de ${months[dateObj.getMonth()]}`
+                    
+                    return (
+                      <option key={fecha} value={fecha}>
+                        {fechaFormateada} (Cupos: {capacity - occupied}/{capacity})
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
+              
+              {agendarTodasLasFechas && (
+                <div className="fechas-todas-info" style={{ 
+                  padding: '1rem', 
+                  background: '#f3f4f6', 
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <p style={{ margin: 0, fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    Se agendará el tutor en {fechasDisponibles.length} fecha(s) disponible(s):
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                    {fechasDisponibles.map((fecha) => {
+                      const dateObj = new Date(fecha + 'T00:00:00')
+                      const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+                      const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                                      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                      const fechaFormateada = `${days[dateObj.getDay()]}, ${dateObj.getDate()} de ${months[dateObj.getMonth()]}`
+                      return <li key={fecha}>{fechaFormateada}</li>
+                    })}
+                  </ul>
+                </div>
+              )}
+              
+              <label className="toggle-label" style={{ marginTop: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={agendarTodasLasFechas}
+                  onChange={(e) => {
+                    setAgendarTodasLasFechas(e.target.checked)
+                    if (e.target.checked && fechasDisponibles.length > 0) {
+                      // No necesitamos seleccionar una fecha específica si se agendan todas
+                    }
+                  }}
+                />
+                <span>Agendar en todas las fechas disponibles ({fechasDisponibles.length} fecha(s))</span>
+              </label>
+              
+              {!agendarTodasLasFechas && (
+                <p className="form-hint" style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                  Este horario está disponible en múltiples fechas. Selecciona la fecha deseada o marca para agendar en todas.
+                </p>
+              )}
+            </>
+          ) : (
           <input
             type="date"
             name="fecha"
@@ -150,6 +332,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
             disabled
             className="form-input"
           />
+          )}
         </div>
 
         <div className="form-row">

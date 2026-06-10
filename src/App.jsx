@@ -5,21 +5,24 @@ import Dashboard from './pages/Dashboard'
 import Horarios from './pages/Horarios'
 import AgendarTutoria from './pages/AgendarTutoria'
 import Estudiantes from './pages/Estudiantes'
-import Retroalimentaciones from './pages/Retroalimentaciones'
 import TutoriasFinalizadas from './pages/TutoriasFinalizadas'
 import Login from './pages/Login'
+import EncuestaPage from './pages/EncuestaPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { DataProvider } from './context/DataContext'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import './App.css'
 
 function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/encuesta" element={<EncuestaPage />} />
             <Route
               path="/*"
               element={
@@ -32,7 +35,6 @@ function App() {
                         <Route path="/horarios" element={<Horarios />} />
                         <Route path="/agendar-tutoria" element={<AgendarTutoria />} />
                         <Route path="/estudiantes" element={<Estudiantes />} />
-                        <Route path="/retroalimentaciones" element={<Retroalimentaciones />} />
                         <Route path="/tutorias-finalizadas" element={<TutoriasFinalizadas />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
@@ -42,9 +44,10 @@ function App() {
               }
             />
           </Routes>
-        </Router>
-      </DataProvider>
-    </AuthProvider>
+          </Router>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

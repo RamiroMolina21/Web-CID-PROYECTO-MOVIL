@@ -6,7 +6,7 @@
 .main-content {
   flex: 1;
   margin-left: 280px;
-  background-color: #f8f8f8;
+  background-color: var(--bg-main);
   min-height: 100vh;
   padding: 2rem;
 }

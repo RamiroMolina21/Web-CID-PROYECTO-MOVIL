@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,14 +13,14 @@
 }
 
 .tutoria-finalizada-modal {
-  background: #2d2d2d;
+  background: var(--modal-bg);
   border-radius: 12px;
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  color: white;
+  color: var(--modal-text);
 }
 
 .tutoria-finalizada-modal-header {
@@ -28,7 +28,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 1.5rem;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--modal-border);
 }
 
 .tutoria-finalizada-modal-title-section {
@@ -50,19 +50,19 @@
 .tutoria-finalizada-modal-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: white;
+  color: var(--modal-text);
   margin: 0 0 0.5rem 0;
 }
 
 .tutoria-finalizada-modal-date {
   font-size: 0.875rem;
-  color: #a0a0a0;
+  color: var(--modal-muted);
   margin: 0;
 }
 
 .tutoria-finalizada-modal-capacity {
   font-size: 0.875rem;
-  color: #a0a0a0;
+  color: var(--modal-muted);
   margin: 4px 0 0 0;
   font-weight: 500;
 }
@@ -75,7 +75,7 @@
 
 .tutoria-finalizada-export-btn {
   background: #3b82f6;
-  color: white;
+  color: var(--modal-text);
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -93,8 +93,8 @@
 }
 
 .tutoria-finalizada-export-btn:disabled {
-  background: #404040;
-  color: #6b7280;
+  background: var(--modal-hover);
+  color: var(--text-secondary);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -102,7 +102,7 @@
 .tutoria-finalizada-close-btn {
   background: transparent;
   border: none;
-  color: #a0a0a0;
+  color: var(--modal-muted);
   font-size: 1.5rem;
   width: 32px;
   height: 32px;
@@ -116,8 +116,8 @@
 }
 
 .tutoria-finalizada-close-btn:hover {
-  background: #404040;
-  color: white;
+  background: var(--modal-hover);
+  color: var(--modal-text);
 }
 
 .tutoria-finalizada-modal-content {
@@ -129,7 +129,7 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 0;
-  color: white;
+  color: var(--modal-text);
   font-size: 0.9375rem;
 }
 
@@ -147,23 +147,23 @@
 
 .tutoria-finalizada-docente-name {
   font-weight: 500;
-  color: white;
+  color: var(--modal-text);
 }
 
 .tutoria-finalizada-docente-tipo {
   font-size: 0.75rem;
-  color: #a0a0a0;
+  color: var(--modal-muted);
 }
 
 .tutoria-finalizada-docente-email {
   font-size: 0.75rem;
-  color: #a0a0a0;
+  color: var(--modal-muted);
 }
 
 /* Estilos para la lista de estudiantes */
 .tutoria-finalizada-students-section {
   margin-top: 1rem;
-  border-top: 1px solid #404040;
+  border-top: 1px solid var(--modal-border);
   padding-top: 1rem;
 }
 
@@ -174,7 +174,7 @@
 .tutoria-finalizada-students-title {
   font-size: 0.95rem;
   margin: 0;
-  color: #e6e6e6;
+  color: var(--modal-text);
 }
 
 .tutoria-finalizada-students-list {
@@ -192,7 +192,7 @@
   align-items: center;
   padding: 0.5rem;
   border-radius: 8px;
-  background: rgba(255,255,255,0.03);
+  background: var(--modal-subtle-bg);
 }
 
 .student-main {
@@ -203,22 +203,22 @@
 
 .student-name {
   font-weight: 600;
-  color: #ffffff;
+  color: var(--modal-text);
 }
 
 .student-meta {
   font-size: 0.8rem;
-  color: #bdbdbd;
+  color: var(--modal-muted);
   display: flex;
   gap: 0.75rem;
 }
 
 .student-email {
-  color: #a0a0a0;
+  color: var(--modal-muted);
 }
 
 .no-students {
-  color: #9ca3af;
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin: 0;
 }

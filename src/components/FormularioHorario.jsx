@@ -1,10 +1,21 @@
 import React, { useState } from 'react'
 import { useData } from '../context/DataContext'
+import TimePicker from './TimePicker'
 import './FormularioHorario.css'
 
 const FormularioHorario = ({ horario, onClose, onSave }) => {
   const { addHorario, updateHorario, horarios, docentes } = useData()
   const [error, setError] = useState('')
+  const [isRecurrente, setIsRecurrente] = useState(false)
+  const [diasSeleccionados, setDiasSeleccionados] = useState({
+    lunes: false,
+    martes: false,
+    miercoles: false,
+    jueves: false,
+    viernes: false,
+    sabado: false,
+    domingo: false
+  })
   const [formData, setFormData] = useState({
     titulo: horario?.titulo || '',
     docenteId: horario?.docenteId || '',
@@ -24,6 +35,36 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+  }
+
+  const handleDiaChange = (dia) => {
+    setDiasSeleccionados(prev => ({
+      ...prev,
+      [dia]: !prev[dia]
+    }))
+  }
+
+  // Función para obtener el nombre del día de la semana en español
+  const getDiaSemana = (fecha) => {
+    const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+    return dias[fecha.getDay()]
+  }
+
+  // Función para generar fechas basadas en días seleccionados
+  const generarFechasRecurrentes = () => {
+    const fechas = []
+    const currentDate = new Date(formData.fecha + 'T00:00:00')
+    const endDate = new Date(formData.fechaFin + 'T00:00:00')
+    
+    while (currentDate <= endDate) {
+      const diaSemana = getDiaSemana(currentDate)
+      if (diasSeleccionados[diaSemana]) {
+        fechas.push(currentDate.toISOString().split('T')[0])
+      }
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    return fechas
   }
 
   const checkConflict = (fecha, horaInicio, horaFin) => {
@@ -88,20 +129,44 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
       return
     }
 
-    // Crear array de fechas entre fecha inicio y fecha fin
-    const fechas = []
+    // Validar días seleccionados si está en modo recurrente
+    if (isRecurrente) {
+      const hayDiasSeleccionados = Object.values(diasSeleccionados).some(dia => dia)
+      if (!hayDiasSeleccionados) {
+        setError('⚠️ Por favor selecciona al menos un día de la semana para la recurrencia')
+        return
+      }
+    }
+
+    // Crear array de fechas según el modo
+    let fechas = []
+    
+    if (isRecurrente) {
+      // Modo recurrente: solo los días seleccionados
+      fechas = generarFechasRecurrentes()
+    } else {
+      // Modo normal: todos los días entre fecha inicio y fecha fin
     const currentDate = new Date(formData.fecha + 'T00:00:00')
     const endDate = new Date(formData.fechaFin + 'T00:00:00')
     
     while (currentDate <= endDate) {
+        fechas.push(currentDate.toISOString().split('T')[0])
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    }
+
+    // Validar que haya al menos una fecha
+    if (fechas.length === 0) {
+      setError('⚠️ No se encontraron fechas válidas con la configuración seleccionada')
+      return
+    }
+
       // Verificar conflictos para cada fecha
-      const fechaStr = currentDate.toISOString().split('T')[0]
+    for (const fechaStr of fechas) {
       if (checkConflict(fechaStr, formData.horaInicio, formData.horaFin)) {
         setError(`⚠️ Ya existe un horario programado para el día ${fechaStr} en el horario seleccionado.`)
         return
       }
-      fechas.push(fechaStr)
-      currentDate.setDate(currentDate.getDate() + 1)
     }
 
     try {
@@ -202,14 +267,59 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
               </div>
 
               <div className="form-group">
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={isRecurrente}
+                    onChange={(e) => setIsRecurrente(e.target.checked)}
+                  />
+                  <span>Horario recurrente</span>
+                </label>
+              </div>
+
+              {isRecurrente && (
+                <div className="form-group">
+                  <label>Selecciona los días de la semana *</label>
+                  <div className="dias-semana-container">
+                    {[
+                      { key: 'lunes', label: 'Lunes', abbr: 'L' },
+                      { key: 'martes', label: 'Martes', abbr: 'M' },
+                      { key: 'miercoles', label: 'Miércoles', abbr: 'X' },
+                      { key: 'jueves', label: 'Jueves', abbr: 'J' },
+                      { key: 'viernes', label: 'Viernes', abbr: 'V' },
+                      { key: 'sabado', label: 'Sábado', abbr: 'S' },
+                      { key: 'domingo', label: 'Domingo', abbr: 'D' }
+                    ].map((dia) => (
+                      <label 
+                        key={dia.key} 
+                        className={`dia-checkbox ${diasSeleccionados[dia.key] ? 'checked' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={diasSeleccionados[dia.key]}
+                          onChange={() => handleDiaChange(dia.key)}
+                        />
+                        <span className="dia-checkbox-label">
+                          <span className="dia-abbr">{dia.abbr}</span>
+                          <span className="dia-full">{dia.label}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="recurrencia-hint">
+                    Se crearán horarios solo para los días seleccionados entre {formData.fecha} y {formData.fechaFin}
+                  </p>
+                </div>
+              )}
+
+              <div className="form-group">
                 <label>Hora de Inicio *</label>
                 <div className="input-with-icon">
-                  <input
-                    type="time"
+                  <TimePicker
                     name="horaInicio"
                     value={formData.horaInicio}
                     onChange={handleChange}
-                    required
+                    placeholder="--:--"
                   />
                   <span className="input-icon">🕐</span>
                 </div>
@@ -220,12 +330,11 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
               <div className="form-group">
                 <label>Hora de Fin *</label>
                 <div className="input-with-icon">
-                  <input
-                    type="time"
+                  <TimePicker
                     name="horaFin"
                     value={formData.horaFin}
                     onChange={handleChange}
-                    required
+                    placeholder="--:--"
                   />
                   <span className="input-icon">🕐</span>
                 </div>

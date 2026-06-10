@@ -15,7 +15,40 @@ const AgendarTutoria = () => {
   const [searchTutoriaQuery, setSearchTutoriaQuery] = useState('')
   const [searchTutoriaDate, setSearchTutoriaDate] = useState('')
 
-  const horariosDisponibles = getHorariosDisponibles()
+  // Función para agrupar horarios recurrentes
+  const agruparHorariosRecurrentes = (horariosList) => {
+    const grupos = new Map()
+    
+    horariosList.forEach(horario => {
+      // Crear clave única basada en título, hora inicio, hora fin, docente y salón
+      const titulo = horario.titulo || 'Sin título'
+      const horaInicio = horario.horaInicio || ''
+      const horaFin = horario.horaFin || ''
+      const docenteId = horario.docenteId || ''
+      const salon = horario.salon || ''
+      
+      const clave = `${titulo}|${horaInicio}|${horaFin}|${docenteId}|${salon}`
+      
+      if (!grupos.has(clave)) {
+        grupos.set(clave, {
+          horarios: [],
+          titulo,
+          horaInicio,
+          horaFin,
+          docenteId,
+          salon,
+          cuposDisponibles: horario.cuposDisponibles || 5
+        })
+      }
+      
+      grupos.get(clave).horarios.push(horario)
+    })
+    
+    return Array.from(grupos.values())
+  }
+
+  // Obtener todos los horarios disponibles (sin agrupar aún)
+  const todosHorariosDisponibles = getHorariosDisponibles()
     .filter(h => {
       // Filtrar horarios con estado "Ocupado"
       if (h.estado && h.estado.toLowerCase() === 'ocupado') {
@@ -46,7 +79,59 @@ const AgendarTutoria = () => {
       return true
     })
 
+  // Ordenar por id descendente (más recientes primero) antes de agrupar
+  const horariosOrdenadosPorRecientes = [...todosHorariosDisponibles].sort((a, b) => (b.id || 0) - (a.id || 0))
+
+  // Agrupar horarios recurrentes
+  const gruposHorarios = agruparHorariosRecurrentes(horariosOrdenadosPorRecientes)
+  
+  // Para cada grupo, seleccionar el horario más cercano disponible como representante
+  const horariosDisponibles = gruposHorarios.map(grupo => {
+    // Ordenar horarios del grupo por fecha (más cercanos primero)
+    const horariosOrdenados = grupo.horarios.sort((a, b) => {
+      const fechaA = new Date(a.fecha + 'T00:00:00').getTime()
+      const fechaB = new Date(b.fecha + 'T00:00:00').getTime()
+      return fechaA - fechaB
+    })
+    
+    // Seleccionar el primero disponible (más cercano)
+    const horarioRepresentante = horariosOrdenados[0]
+    
+    // Obtener todas las fechas disponibles del grupo (excluyendo las que ya tienen tutorías)
+    const fechasDisponibles = horariosOrdenados
+      .map(h => {
+        const tutoriasEnHorario = tutorias.filter(t => t.horarioId === h.id)
+        const occupied = tutoriasEnHorario.length
+        const capacity = h.cuposDisponibles ?? 5
+        const tieneCupo = occupied < capacity
+        const tieneTutoria = tutoriasEnHorario.length > 0
+        // Una fecha está disponible solo si tiene cupo Y no tiene ninguna tutoría asignada
+        return { 
+          fecha: h.fecha, 
+          horario: h, 
+          disponible: tieneCupo && !tieneTutoria,
+          ocupado: occupied,
+          capacidad: capacity
+        }
+      })
+      .filter(item => item.disponible)
+      .map(item => item.fecha)
+    
+    return {
+      ...horarioRepresentante,
+      grupoId: `${grupo.titulo}|${grupo.horaInicio}|${grupo.horaFin}|${grupo.docenteId}|${grupo.salon}`,
+      esRecurrente: grupo.horarios.length > 1,
+      totalOcurrencias: grupo.horarios.length,
+      fechasDisponibles: fechasDisponibles,
+      todosLosHorarios: horariosOrdenados // Guardar todos para poder seleccionar uno específico
+    }
+    })
+
   const tutoriasAgendadas = tutorias
+    .filter(t => {
+      const estado = (t.estado || '').toLowerCase()
+      return estado !== 'finalizada' && estado !== 'completada' && estado !== 'completa'
+    })
     .filter(t => {
       if (searchTutoriaDate) {
         const tutoriaDate = new Date(t.fecha).toISOString().split('T')[0]
@@ -65,8 +150,8 @@ const AgendarTutoria = () => {
       return true
     })
     .sort((a, b) => {
-      if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha)
-      return a.horaInicio.localeCompare(b.horaInicio)
+      if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha)
+      return b.horaInicio.localeCompare(a.horaInicio)
     })
 
   const formatDate = (dateString) => {
@@ -118,38 +203,61 @@ const AgendarTutoria = () => {
           </div>
 
           <div className="horarios-grid">
-            {horariosDisponibles.map((horario) => (
+            {horariosDisponibles.map((horario) => {
+              // Calcular cupos totales para el grupo si es recurrente
+              const esRecurrente = horario.esRecurrente || false
+              let cuposInfo = ''
+              let totalOcupados = 0
+              
+              if (esRecurrente && horario.todosLosHorarios) {
+                // Sumar cupos de todos los horarios del grupo
+                totalOcupados = horario.todosLosHorarios.reduce((sum, h) => {
+                  return sum + tutorias.filter(t => t.horarioId === h.id).length
+                }, 0)
+                const totalCapacidad = horario.todosLosHorarios.length * (horario.cuposDisponibles || 5)
+                cuposInfo = `${totalOcupados}/${totalCapacidad}`
+              } else {
+                const occupied = tutorias.filter(t => t.horarioId === horario.id).length
+                const capacity = horario.cuposDisponibles ?? 5
+                totalOcupados = occupied
+                cuposInfo = `${occupied}/${capacity}`
+              }
+              
+              return (
               <div
-                key={horario.id}
-                className={`horario-card ${selectedHorario?.id === horario.id ? 'selected' : ''}`}
+                  key={horario.grupoId || horario.id}
+                  className={`horario-card ${selectedHorario?.grupoId === horario.grupoId || selectedHorario?.id === horario.id ? 'selected' : ''}`}
                 onClick={() => setSelectedHorario(horario)}
               >
                 <div className="horario-badges">
-                  <span className="badge available">Disponible</span>
-                  {selectedHorario?.id === horario.id && (
-                    <span className="badge selected">Seleccionado</span>
-                  )}
+                  <div className="horario-badges-left">
+                    <span className="badge available">Disponible</span>
+                    {esRecurrente && (
+                      <span className="badge recurrente" title={`Horario recurrente con ${horario.totalOcurrencias} fechas disponibles`}>
+                        🔄 Recurrente ({horario.totalOcurrencias})
+                      </span>
+                    )}
+                    {selectedHorario?.grupoId === horario.grupoId || selectedHorario?.id === horario.id ? (
+                      <span className="badge selected">Seleccionado</span>
+                    ) : null}
+                  </div>
+                  <div className="cupos-badge" title={`Cupos: ${cuposInfo}`}>
+                    {cuposInfo}
+                  </div>
                 </div>
                 <h4>{horario.titulo || 'Sin título'}</h4>
                 <div className="horario-info">
-                  <span>📅 {formatDate(horario.fecha)}</span>
+                  <span>📅 {esRecurrente ? 'Múltiples fechas disponibles' : formatDate(horario.fecha)}</span>
                   <span>🕐 {horario.horaInicio} - {horario.horaFin}</span>
                 </div>
-
-                {/* Cupos: ocupados/capacidad (esquina inferior derecha) */}
-                <div className="cupos-badge" title={`Cupos: ${(() => {
-                  const occupied = tutorias.filter(t => t.horarioId === horario.id).length
-                  const capacity = horario.cuposDisponibles ?? 5
-                  return `${occupied}/${capacity}`
-                })()}`}>
-                  {(() => {
-                    const occupied = tutorias.filter(t => t.horarioId === horario.id).length
-                    const capacity = horario.cuposDisponibles ?? 5
-                    return `${occupied}/${capacity}`
-                  })()}
+                {esRecurrente && horario.fechasDisponibles && horario.fechasDisponibles.length > 0 && (
+                  <div className="fechas-recurrentes-hint">
+                    {horario.fechasDisponibles.length} fecha(s) disponible(s)
+                  </div>
+                )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {selectedHorario && (
@@ -223,16 +331,24 @@ const AgendarTutoria = () => {
                       <span className={getStatusBadgeClass(tutoria.estado)}>
                         {tutoria.estado || 'Pendiente'}
                       </span>
-                      <button
-                        className="tutoria-agregar-estudiante-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setTutoriaParaAgregarEstudiante(tutoria)
-                        }}
-                        title="Agregar estudiante"
-                      >
-                        ➕ Agregar Estudiante
-                      </button>
+                      {(() => {
+                        const estadoLower = (tutoria.estado || '').toLowerCase()
+                        const esFinalizada = estadoLower === 'finalizada' || estadoLower === 'completada' || estadoLower === 'completa'
+                        return (
+                          <button
+                            className="tutoria-agregar-estudiante-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!esFinalizada) setTutoriaParaAgregarEstudiante(tutoria)
+                            }}
+                            disabled={esFinalizada}
+                            title={esFinalizada ? 'Esta tutoría ya está finalizada' : 'Agregar estudiante'}
+                            style={esFinalizada ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                          >
+                            ➕ Agregar Estudiante
+                          </button>
+                        )
+                      })()}
                     </div>
                     <p className="tutoria-tema">
                       <strong>{tutoria.idioma || ''} {tutoria.nivel || ''}</strong>

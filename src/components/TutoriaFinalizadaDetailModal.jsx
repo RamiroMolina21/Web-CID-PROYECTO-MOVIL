@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './TutoriaFinalizadaDetailModal.css'
 import { useData } from '../context/DataContext'
-import { notificacionService, tutoriaService, horarioService } from '../services/apiService'
+import { notificacionService, tutoriaService, horarioService, encuestaService, retroalimentacionService } from '../services/apiService'
 
 const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   const { getDocenteById, getEstudianteById, estudiantes, docentes, horarios } = useData()
@@ -9,6 +9,10 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(false)
   const [exportando, setExportando] = useState(false)
   const [docenteId, setDocenteId] = useState(null)
+  const [encuestas, setEncuestas] = useState([])
+  const [loadingEncuestas, setLoadingEncuestas] = useState(false)
+  const [retroalimentaciones, setRetroalimentaciones] = useState([])
+  const [loadingRetro, setLoadingRetro] = useState(false)
   
   if (!tutoria) return null
 
@@ -166,6 +170,42 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
     cargarEstudiantes()
   }, [tutoriaId])
 
+  // Cargar encuestas de la tutoría
+  useEffect(() => {
+    const cargarEncuestas = async () => {
+      if (!tutoriaId) return
+      setLoadingEncuestas(true)
+      try {
+        const data = await encuestaService.getByTutoria(tutoriaId)
+        setEncuestas(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.warn('Error cargando encuestas de tutoría:', error)
+        setEncuestas([])
+      } finally {
+        setLoadingEncuestas(false)
+      }
+    }
+    cargarEncuestas()
+  }, [tutoriaId])
+
+  // Cargar retroalimentaciones de la tutoría
+  useEffect(() => {
+    const cargarRetroalimentaciones = async () => {
+      if (!tutoriaId) return
+      setLoadingRetro(true)
+      try {
+        const data = await retroalimentacionService.getByTutoria(tutoriaId)
+        setRetroalimentaciones(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.warn('Error cargando retroalimentaciones de tutoría:', error)
+        setRetroalimentaciones([])
+      } finally {
+        setLoadingRetro(false)
+      }
+    }
+    cargarRetroalimentaciones()
+  }, [tutoriaId])
+
   // Obtener información de estudiantes
   const estudiantesInfo = estudiantesTutoria.map(est => {
     const estId = getProp(est, 'idUsuario', 'IdUsuario', 'id', 'Id')
@@ -318,6 +358,189 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
           <div className="tutoria-finalizada-detail-item">
             <span className="tutoria-finalizada-detail-icon">🔒</span>
             <span>Finalizada</span>
+          </div>
+
+          {/* Sección de Retroalimentación del Profesor */}
+          <div className="tutoria-finalizada-students-section" style={{ marginTop: '16px' }}>
+            <div className="tutoria-finalizada-students-header">
+              <h3 className="tutoria-finalizada-students-title">
+                💬 Retroalimentación del profesor
+              </h3>
+            </div>
+
+            {loadingRetro ? (
+              <p className="no-students">Cargando retroalimentación...</p>
+            ) : retroalimentaciones.length === 0 ? (
+              <p className="no-students">No hay retroalimentación registrada para esta tutoría.</p>
+            ) : (
+              retroalimentaciones.map((retro) => {
+                const calificacion = retro.Calificacion ?? retro.calificacion ?? 0
+                const calRedondeada = Math.round(calificacion)
+                const comentario = retro.Comentario ?? retro.comentario ?? ''
+                const fecha = retro.Fecha ?? retro.fecha
+                const nombre = `${retro.UsuarioNombre ?? retro.usuarioNombre ?? ''} ${retro.UsuarioApellidos ?? retro.usuarioApellidos ?? ''}`.trim() || 'Docente'
+
+                // Color de fondo según calificación
+                let calColor = '#f59e0b'
+                if (calificacion >= 4) calColor = '#16a34a'
+                else if (calificacion < 3) calColor = '#dc2626'
+
+                return (
+                  <div key={retro.IdRetroalimentacion ?? retro.idRetroalimentacion} style={{
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderLeft: '4px solid #4472c4',
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    marginBottom: '10px',
+                  }}>
+                    {/* Encabezado: docente + calificación */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#1e3a5f', fontSize: '14px' }}>
+                        👩‍🏫 {nombre}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '16px', color: '#f59e0b' }}>
+                          {'★'.repeat(calRedondeada)}{'☆'.repeat(5 - calRedondeada)}
+                        </span>
+                        <span style={{
+                          background: calColor, color: 'white',
+                          fontWeight: 'bold', fontSize: '13px',
+                          padding: '2px 8px', borderRadius: '12px',
+                        }}>
+                          {Number(calificacion).toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Comentario */}
+                    {comentario ? (
+                      <p style={{
+                        margin: '0 0 6px', fontSize: '13px', color: '#374151',
+                        lineHeight: '1.5', fontStyle: 'italic',
+                      }}>
+                        "{comentario}"
+                      </p>
+                    ) : (
+                      <p style={{ margin: '0 0 6px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>
+                        Sin comentario
+                      </p>
+                    )}
+
+                    {/* Fecha */}
+                    {fecha && (
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        {new Date(fecha).toLocaleDateString('es-ES', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Sección de Encuestas de Satisfacción */}
+          <div className="tutoria-finalizada-students-section" style={{ marginTop: '16px' }}>
+            <div className="tutoria-finalizada-students-header">
+              <h3 className="tutoria-finalizada-students-title">
+                📋 Encuestas de satisfacción
+                {encuestas.length > 0 && (
+                  <span style={{
+                    marginLeft: '8px', fontSize: '12px', fontWeight: 'normal',
+                    color: '#6b7280', background: '#f3f4f6',
+                    padding: '2px 8px', borderRadius: '12px',
+                  }}>
+                    {encuestas.filter(e => e.tokenUsado).length}/{encuestas.length} respondidas
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {loadingEncuestas ? (
+              <p className="no-students">Cargando encuestas...</p>
+            ) : encuestas.length === 0 ? (
+              <p className="no-students">No se han enviado encuestas para esta tutoría.</p>
+            ) : (
+              <>
+                {/* Promedio si hay respuestas */}
+                {encuestas.filter(e => e.tokenUsado).length > 0 && (() => {
+                  const respondidas = encuestas.filter(e => e.tokenUsado)
+                  const promedio = respondidas.reduce((s, e) => s + e.calificacion, 0) / respondidas.length
+                  return (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      background: '#f0fdf4', border: '1px solid #bbf7d0',
+                      borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+                    }}>
+                      <span style={{ fontSize: '20px', color: '#f59e0b' }}>
+                        {'★'.repeat(Math.round(promedio))}{'☆'.repeat(5 - Math.round(promedio))}
+                      </span>
+                      <span style={{ fontWeight: 'bold', color: '#15803d' }}>
+                        Promedio: {promedio.toFixed(1)}/5
+                      </span>
+                      <span style={{ color: '#6b7280', fontSize: '13px' }}>
+                        ({respondidas.length} respuesta{respondidas.length !== 1 ? 's' : ''})
+                      </span>
+                    </div>
+                  )
+                })()}
+
+                {/* Lista de encuestas */}
+                <ul className="tutoria-finalizada-students-list">
+                  {encuestas.map((enc) => (
+                    <li key={enc.idEncuesta} className="tutoria-finalizada-student-item" style={{
+                      borderLeft: enc.tokenUsado ? '3px solid #22c55e' : '3px solid #d1d5db',
+                    }}>
+                      <div className="student-main" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div className="student-name">
+                            {enc.estudianteNombre || 'Estudiante'}
+                          </div>
+                          {enc.tokenUsado ? (
+                            <span style={{
+                              fontSize: '18px', color: '#f59e0b', letterSpacing: '2px', flexShrink: 0,
+                            }} title={`${enc.calificacion}/5`}>
+                              {'★'.repeat(enc.calificacion)}{'☆'.repeat(5 - enc.calificacion)}
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: '12px', color: '#9ca3af',
+                              background: '#f3f4f6', padding: '2px 8px', borderRadius: '10px',
+                            }}>
+                              Pendiente
+                            </span>
+                          )}
+                        </div>
+                        {enc.estudianteCorreo && (
+                          <div className="student-meta">
+                            <span className="student-email">{enc.estudianteCorreo}</span>
+                          </div>
+                        )}
+                        {enc.tokenUsado && enc.comentario && (
+                          <div style={{
+                            marginTop: '6px', fontSize: '13px', color: '#374151',
+                            background: '#f9fafb', borderRadius: '6px',
+                            padding: '6px 10px', fontStyle: 'italic',
+                          }}>
+                            "{enc.comentario}"
+                          </div>
+                        )}
+                        {enc.tokenUsado && enc.fechaRespuesta && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                            Respondida el {new Date(enc.fechaRespuesta).toLocaleDateString('es-ES', {
+                              day: '2-digit', month: 'short', year: 'numeric'
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </div>
