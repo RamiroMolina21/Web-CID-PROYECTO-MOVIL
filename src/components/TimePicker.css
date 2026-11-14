@@ -36,7 +36,7 @@
 }
 
 .time-picker-placeholder {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .time-picker-dropdown {

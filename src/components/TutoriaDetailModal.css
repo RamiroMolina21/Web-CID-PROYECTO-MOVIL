@@ -41,7 +41,7 @@
 .tutoria-color-indicator {
   width: 12px;
   height: 12px;
-  background: #22c55e;
+  background: var(--success-dot);
   border-radius: 3px;
   margin-top: 0.5rem;
   flex-shrink: 0;
@@ -192,7 +192,38 @@
 }
 
 .no-students {
-  color: var(--text-muted);
+  color: var(--modal-muted);
   font-size: 0.9rem;
   margin: 0;
+}
+
+.tutoria-detail-finalizar {
+  margin-top: 1rem;
+}
+
+.tutoria-detail-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ---------- Tokens (claro/oscuro) ---------- */
+.td-count {
+  color: var(--success-text);
+}
+
+.tutoria-color-indicator {
+  background: var(--success-dot);
+}
+
+@media (max-width: 1023px) {
+  .tutoria-close-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Tutoría sin asignar (usuario eliminado) */
+.tutoria-sin-asignar {
+  color: var(--warning-text);
+  font-weight: 600;
 }

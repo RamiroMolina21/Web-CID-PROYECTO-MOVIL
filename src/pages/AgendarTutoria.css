@@ -418,3 +418,47 @@
 
 
 
+
+/* ---------- Contraste WCAG AA (tokens; claro y oscuro) ---------- */
+.horario-info span,
+.tutoria-tema,
+.tutoria-details span,
+.tutoria-docente {
+  color: var(--text-label);
+}
+
+.tutoria-agregar-estudiante-btn {
+  background: var(--accent-solid);
+  color: #ffffff;
+}
+
+.status-badge.scheduled,
+.status-badge.active {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+  border-color: var(--warning-dot);
+}
+
+.status-badge.cancelled {
+  background-color: var(--error-bg);
+  color: var(--danger-strong);
+  border-color: var(--error-border);
+}
+
+.tutorias-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2rem;
+}
+
+@media (max-width: 1023px) {
+  .tutoria-agregar-estudiante-btn {
+    min-height: 44px;
+  }
+}
+
+/* Tutoría sin asignar (usuario eliminado) */
+.tutoria-sin-asignar {
+  color: var(--warning-text);
+  font-weight: 600;
+}

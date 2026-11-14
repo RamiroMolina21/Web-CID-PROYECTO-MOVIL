@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { usuarioService, horarioService, tutoriaService } from '../services/apiService'
+import { isHorarioDisponible } from '../lib/estados'
+
+// Fecha local YYYY-MM-DD (toISOString() usa UTC y en Colombia cambia de día a las 19:00)
+const hoyLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const ROLE_NAME_TO_ID = {
   administrador: 1,
@@ -7,6 +14,7 @@ const ROLE_NAME_TO_ID = {
   docente: 3,
   coordinador: 3,
   estudiante: 4,
+  auxiliar: 5,
 }
 
 const ROLE_ID_TO_NAME = Object.entries(ROLE_NAME_TO_ID).reduce((acc, [name, id]) => {
@@ -48,10 +56,12 @@ const mapUsuarioFromAPI = (apiUsuario) => {
     rol: rolNombre || (rolId ? ROLE_ID_TO_NAME[rolId] : 'Estudiante'),
     tipoRol: rolNombre || (rolId ? ROLE_ID_TO_NAME[rolId] : 'Estudiante'),
     rolId: rolId,
+    // [+] Cuenta habilitada (UsuarioResponse.activo). Ausente en respuestas antiguas → se trata como activa.
+    activo: apiUsuario.activo !== false,
   }
 }
 
-const mapUsuarioToAPI = (frontendUsuario, isEstudiante = true) => {
+const mapUsuarioToAPI = (frontendUsuario, isEstudiante = true, { isUpdate = false } = {}) => {
   const rawNombre = (frontendUsuario.nombre || frontendUsuario.nombres || '').trim()
   let nombres = rawNombre
   let apellidos = (frontendUsuario.apellido || frontendUsuario.apellidos || '').trim()
@@ -78,8 +88,15 @@ const mapUsuarioToAPI = (frontendUsuario, isEstudiante = true) => {
     nombres,
     apellidos,
     correo,
-    contrasena: contrasena || (isEstudiante ? 'TempPass123!' : ''),
     rolId: rolIdNormalizado,
+  }
+
+  if (isUpdate) {
+    // UsuarioUpdate: contraseña opcional. Omitirla conserva la actual (antes se reseteaba a 'TempPass123!').
+    if (contrasena) usuarioData.contrasena = contrasena
+  } else {
+    // UsuarioCreate exige contraseña (≥ 6). Los estudiantes no inician sesión (403), se conserva el valor por defecto existente.
+    usuarioData.contrasena = contrasena || (isEstudiante ? 'TempPass123!' : '')
   }
 
   return usuarioData
@@ -181,6 +198,8 @@ const mapHorarioFromAPI = (apiHorario) => {
     docenteCorreo: usuarioCorreo,
     disponible: apiHorario.disponible !== undefined ? apiHorario.disponible : true,
     estado: apiHorario.estado || apiHorario.Estado || 'Disponible',
+    // [+] Dueño eliminado: el horario se conservó porque tiene tutorías (usuarioId null)
+    sinDueno: 'usuarioId' in apiHorario && apiHorario.usuarioId === null,
     cuposDisponibles: parseInt(apiHorario.cupos, 10) || apiHorario.cuposDisponibles || 5,
     tipoClase: apiHorario.tipoClase || 'Presencial',
     salon: apiHorario.espacio || apiHorario.salon || '',
@@ -453,9 +472,10 @@ const mapTutoriaFromAPI = (apiTutoria) => {
   return {
     id: apiTutoria.idTutoria || apiTutoria.id,
     // Para compatibilidad: usar el primer estudiante si hay lista, o el estudianteId directo
-    estudianteId: estudiantesIds.length > 0 ? estudiantesIds[0] : (apiTutoria.usuarioId || apiTutoria.estudianteId || apiTutoria.idEstudiante),
+    // TutoriaResponse.usuarioId es el TUTOR asignado, no un estudiante: no se usa como estudiante.
+    estudianteId: estudiantesIds.length > 0 ? estudiantesIds[0] : null,
     // Guardar todos los IDs de estudiantes
-    estudiantesIds: estudiantesIds.length > 0 ? estudiantesIds : (apiTutoria.usuarioId ? [apiTutoria.usuarioId] : []),
+    estudiantesIds,
     docenteId: docenteId,
     // Guardar información del docente para búsqueda posterior
     docenteNombre: docenteNombre,
@@ -472,6 +492,15 @@ const mapTutoriaFromAPI = (apiTutoria) => {
     horaFin: horaFin || apiTutoria.horaFin || '',
     estado: apiTutoria.estado || 'Pendiente',
     notas: apiTutoria.notas || '',
+    // [+] Campos del contrato (TutoriaResponse fase 2) usados por el Dashboard. Solo lectura.
+    // horarioCupos: int o null (= sin límite). Ocupados = estudiantes.length.
+    cupos: Number.isInteger(apiTutoria.horarioCupos) && apiTutoria.horarioCupos > 0 ? apiTutoria.horarioCupos : null,
+    // [+] Usuario eliminado (contrato "Datos desvinculados"): usuarioId null = tutoría sin asignar;
+    // horarioUsuarioId null = el dueño del horario ya no existe.
+    sinAsignar: 'usuarioId' in apiTutoria && apiTutoria.usuarioId === null,
+    horarioUsuarioId: apiTutoria.horarioUsuarioId ?? null,
+    horarioSinDueno: 'horarioUsuarioId' in apiTutoria && apiTutoria.horarioUsuarioId === null,
+    espacio: apiTutoria.horarioEspacio && apiTutoria.horarioEspacio !== 'N/A' ? apiTutoria.horarioEspacio : '',
   }
 }
 
@@ -557,12 +586,9 @@ const mapTutoriaToAPI = (frontendTutoria) => {
   }
   tutoriaData.horarioId = parseInt(frontendTutoria.horarioId)
 
-  // UsuarioId: Si hay estudianteId, usarlo; si no, usar docenteId como UsuarioId
-  // (el backend requiere UsuarioId, y el docente es quien da la tutoría)
-  if (frontendTutoria.estudianteId) {
-    tutoriaData.usuarioId = parseInt(frontendTutoria.estudianteId)
-  } else if (frontendTutoria.docenteId) {
-    // Usar el docente como UsuarioId si no hay estudiante
+  // UsuarioId = docente/tutor que imparte la tutoría (TutoriaCreate.usuarioId).
+  // Los estudiantes se asignan aparte con POST /Tutoria/{id}/estudiantes (antes se enviaba el estudiante como tutor).
+  if (frontendTutoria.docenteId) {
     tutoriaData.usuarioId = parseInt(frontendTutoria.docenteId)
   } else {
     throw new Error('Se requiere al menos un docente/tutor para la tutoría')
@@ -587,9 +613,13 @@ export const DataProvider = ({ children }) => {
   const [tutorias, setTutorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // [+] Error por recurso (el listado fallido se sigue tratando como [] para no romper otras vistas,
+  // pero el Dashboard lo muestra en el bloque afectado en lugar de pintar ceros).
+  const [loadErrors, setLoadErrors] = useState({})
 
   // Cargar todos los datos desde la API
   const loadData = useCallback(async () => {
+    const errores = {}
     try {
       setLoading(true)
       setError(null)
@@ -597,6 +627,7 @@ export const DataProvider = ({ children }) => {
       // Cargar usuarios (estudiantes y docentes)
       const [usuariosData, horariosData, tutoriasData] = await Promise.all([
         usuarioService.getAll().catch((err) => {
+          errores.usuarios = err
           console.error('Error cargando usuarios:', err.message)
           // Si es un error 502, lanzar el error para que se muestre al usuario
           if (err.message.includes('502') || err.message.includes('Bad Gateway')) {
@@ -605,6 +636,7 @@ export const DataProvider = ({ children }) => {
           return []
         }),
         horarioService.getAll().catch((err) => {
+          errores.horarios = err
           console.error('Error cargando horarios:', err.message)
           if (err.message.includes('502') || err.message.includes('Bad Gateway')) {
             throw err
@@ -612,6 +644,7 @@ export const DataProvider = ({ children }) => {
           return []
         }),
         tutoriaService.getAll().catch((err) => {
+          errores.tutorias = err
           console.error('Error cargando tutorías:', err.message)
           if (err.message.includes('502') || err.message.includes('Bad Gateway')) {
             throw err
@@ -720,8 +753,8 @@ export const DataProvider = ({ children }) => {
             }
           }
           
-          // Preservar información del docente
-          if (!tutoriaActualizada.docenteId) {
+          // Preservar información del docente (nunca si el servidor dice que quedó sin asignar: usuario eliminado)
+          if (!tutoriaActualizada.docenteId && !tutoriaActualizada.sinAsignar) {
             const existingDocente = existingDocentesMap.get(t.id)
             if (existingDocente) {
               tutoriaActualizada.docenteId = existingDocente.docenteId
@@ -749,6 +782,7 @@ export const DataProvider = ({ children }) => {
       console.error('Error cargando datos:', err)
       setError(err.message || 'Error al cargar los datos')
     } finally {
+      setLoadErrors(errores)
       setLoading(false)
     }
   }, [])
@@ -855,7 +889,7 @@ export const DataProvider = ({ children }) => {
 
   const updateEstudiante = async (id, updatedData) => {
     try {
-      const estudianteData = mapUsuarioToAPI(updatedData, true)
+      const estudianteData = mapUsuarioToAPI(updatedData, true, { isUpdate: true })
       const response = await usuarioService.update(id, estudianteData)
       const updatedEstudiante = mapUsuarioFromAPI(response)
       setEstudiantes(prev => prev.map(e => e.id === id ? updatedEstudiante : e))
@@ -868,8 +902,12 @@ export const DataProvider = ({ children }) => {
 
   const deleteEstudiante = async (id) => {
     try {
-      await usuarioService.delete(id)
+      // DELETE devuelve { message, resumen } (eliminación definitiva; los datos compartidos quedan sin asignar)
+      const respuesta = await usuarioService.delete(id)
       setEstudiantes(prev => prev.filter(e => e.id !== id))
+      // Tutorías y horarios compartidos pudieron quedar sin asignar: se recargan los listados de gestión
+      loadData()
+      return respuesta
     } catch (err) {
       console.error('Error eliminando estudiante:', err)
       throw err
@@ -892,7 +930,7 @@ export const DataProvider = ({ children }) => {
 
   const updateDocente = async (id, updatedData) => {
     try {
-      const docenteData = mapUsuarioToAPI(updatedData, false)
+      const docenteData = mapUsuarioToAPI(updatedData, false, { isUpdate: true })
       const response = await usuarioService.update(id, docenteData)
       const updatedDocente = mapUsuarioFromAPI(response)
       setDocentes(prev => prev.map(d => d.id === id ? updatedDocente : d))
@@ -905,8 +943,12 @@ export const DataProvider = ({ children }) => {
 
   const deleteDocente = async (id) => {
     try {
-      await usuarioService.delete(id)
+      // DELETE devuelve { message, resumen } (eliminación definitiva; los datos compartidos quedan sin asignar)
+      const respuesta = await usuarioService.delete(id)
       setDocentes(prev => prev.filter(d => d.id !== id))
+      // Tutorías y horarios compartidos pudieron quedar sin asignar: se recargan los listados de gestión
+      loadData()
+      return respuesta
     } catch (err) {
       console.error('Error eliminando docente:', err)
       throw err
@@ -1062,12 +1104,14 @@ export const DataProvider = ({ children }) => {
     return tutorias.find(t => t.id === id)
   }
 
+  // Disponibles para agendar: estado Disponible/Libre y fecha de hoy en adelante
   const getHorariosDisponibles = () => {
-    return horarios.filter(h => h.disponible !== false)
+    const today = hoyLocal()
+    return horarios.filter(h => isHorarioDisponible(h.estado) && (!h.fecha || h.fecha >= today))
   }
 
   const getTutoriasHoy = () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = hoyLocal()
     return tutorias.filter(t => {
       const tutoriaDate = t.fecha ? t.fecha.split('T')[0] : t.fecha
       return tutoriaDate === today
@@ -1085,6 +1129,7 @@ export const DataProvider = ({ children }) => {
     docentes,
     loading,
     error,
+    loadErrors,
     loadData,
     addHorario,
     updateHorario,

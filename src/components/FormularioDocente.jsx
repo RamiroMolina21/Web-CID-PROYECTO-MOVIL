@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast } from './ui/Feedback'
 import './FormularioDocente.css'
+import Icon from './ui/Icon'
 
 const FormularioDocente = ({ docente, onClose, onSave }) => {
   const { addDocente, updateDocente } = useData()
+  const toast = useToast()
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -42,7 +45,7 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
       }
       onSave()
     } catch (error) {
-      alert(`Error: ${error.message || 'No se pudo guardar el docente'}`)
+      toast.error(`Error: ${error.message || 'No se pudo guardar el docente'}`)
     }
   }
 
@@ -54,9 +57,10 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
         </div>
         <form onSubmit={handleSubmit} className="formulario-docente-form">
           <div className="form-group">
-            <label>Nombre *</label>
+            <label htmlFor="fd-nombre">Nombre *</label>
             <input
               type="text"
+              id="fd-nombre"
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
@@ -67,9 +71,10 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Apellido *</label>
+            <label htmlFor="fd-apellido">Apellido *</label>
             <input
               type="text"
+              id="fd-apellido"
               name="apellido"
               value={formData.apellido}
               onChange={handleChange}
@@ -80,9 +85,10 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Correo *</label>
+            <label htmlFor="fd-correo">Correo *</label>
             <input
               type="email"
+              id="fd-correo"
               name="correo"
               value={formData.correo}
               onChange={handleChange}
@@ -93,9 +99,10 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Contraseña *</label>
+            <label htmlFor="fd-contrasena">Contraseña *</label>
             <input
               type="password"
+              id="fd-contrasena"
               name="contrasena"
               value={formData.contrasena}
               onChange={handleChange}
@@ -106,8 +113,9 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Rol *</label>
+            <label htmlFor="fd-rol">Rol *</label>
             <select
+              id="fd-rol"
               name="rol"
               value={formData.rol}
               onChange={handleChange}
@@ -117,15 +125,16 @@ const FormularioDocente = ({ docente, onClose, onSave }) => {
               <option value="Docente">Docente</option>
               <option value="Administrador">Administrador</option>
               <option value="Tutor">Tutor</option>
+              <option value="Auxiliar">Auxiliar</option>
             </select>
           </div>
 
           <div className="form-actions">
             <button type="button" onClick={onClose} className="btn-cancel">
-              ✕ Cancelar
+              <Icon name="close" size={18} /> Cancelar
             </button>
             <button type="submit" className="btn-save">
-              💾 Guardar
+              <Icon name="save" size={18} /> Guardar
             </button>
           </div>
         </form>

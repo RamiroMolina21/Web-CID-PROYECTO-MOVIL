@@ -1,94 +1,72 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { useConfirm } from './ui/Feedback'
+import Icon from './ui/Icon'
+import Logo from './ui/Logo'
+import { NAV_POR_ROL } from '../navigation'
+import { getRol, iniciales, nombreCompleto, normalizarRol } from '../lib/roles'
 import './Sidebar.css'
 
-const Sidebar = () => {
-  const location = useLocation()
-  const navigate = useNavigate()
+const Sidebar = ({ id, onNavigate }) => {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const confirm = useConfirm()
 
-  const menuItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/horarios', label: 'Horarios', icon: '🕐' },
-    { path: '/agendar-tutoria', label: 'Agendar Tutoría', icon: '📅' },
-    { path: '/estudiantes', label: 'Usuarios', icon: '👥' },
-    { path: '/tutorias-finalizadas', label: 'Tutorías Finalizadas', icon: '✅' }
-  ]
+  const rol = normalizarRol(getRol(user))
+  const items = NAV_POR_ROL[rol] || []
+  const nombre = nombreCompleto(user) || user?.correo || 'Usuario'
 
-  const handleLogout = () => {
-    if (window.confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-      logout()
-      navigate('/login')
-    }
-  }
-
-  // Obtener nombre completo del usuario
-  const getNombreCompleto = () => {
-    if (!user) return 'Usuario'
-    const nombres = user.nombres || user.Nombres || ''
-    const apellidos = user.apellidos || user.Apellidos || ''
-    return `${nombres} ${apellidos}`.trim() || user.correo || user.Correo || 'Usuario'
-  }
-
-  // Obtener rol del usuario
-  const getRol = () => {
-    if (!user) return ''
-    const rol = user.tipoRol || user.TipoRol || ''
-    return rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase()
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: 'Cerrar sesión',
+      message: '¿Seguro que deseas cerrar sesión?',
+      confirmLabel: 'Cerrar sesión',
+      danger: true,
+    })
+    if (ok) logout()
   }
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" id={id} aria-label="Navegación principal">
       <div className="sidebar-header">
-        <div className="logo">
-          <div className="logo-icon">📚</div>
-        </div>
-        <div className="logo-text">
-          <h1>TutorPro</h1>
-          <p>Gestión de Tutorías</p>
-        </div>
+        <Logo size={44} tagline="Gestión de tutorías" />
       </div>
 
-      <div className="sidebar-menu">
-        <h3 className="menu-title">MENÚ PRINCIPAL</h3>
-        <nav className="menu-nav">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`menu-item ${location.pathname === item.path ? 'active' : ''}`}
-            >
-              <span className="menu-icon">{item.icon}</span>
-              <span className="menu-label">{item.label}</span>
-            </Link>
+      <nav className="sidebar-menu" aria-labelledby="menu-title">
+        <h2 className="menu-title" id="menu-title">Menú principal</h2>
+        <ul className="menu-nav">
+          {items.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => `menu-item${isActive ? ' active' : ''}`}
+                onClick={onNavigate}
+              >
+                <Icon name={item.icon} className="menu-icon" />
+                <span className="menu-label">{item.label}</span>
+              </NavLink>
+            </li>
           ))}
-        </nav>
-      </div>
+        </ul>
+      </nav>
 
       <div className="sidebar-footer">
         <div className="user-info">
-          <div className="user-avatar">
-            {getNombreCompleto()
-              .split(' ')
-              .map(n => n[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2)}
-          </div>
+          <div className="user-avatar" aria-hidden="true">{iniciales(nombre)}</div>
           <div className="user-details">
-            <div className="user-name">{getNombreCompleto()}</div>
-            <div className="user-role">{getRol()}</div>
+            <p className="user-name" title={nombre}>{nombre}</p>
+            <p className="user-role">{rol || getRol(user)}</p>
           </div>
         </div>
         <button type="button" className="theme-toggle" onClick={toggleTheme}>
-          <span>{theme === 'light' ? '🌙' : '☀️'}</span>
+          <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
           <span>{theme === 'light' ? 'Modo oscuro' : 'Modo claro'}</span>
         </button>
-        <button className="logout-button" onClick={handleLogout}>
-          <span className="logout-icon">🚪</span>
+        <button type="button" className="logout-button" onClick={handleLogout}>
+          <Icon name="logout" size={18} />
           <span>Cerrar sesión</span>
         </button>
       </div>
@@ -97,4 +75,3 @@ const Sidebar = () => {
 }
 
 export default Sidebar
-

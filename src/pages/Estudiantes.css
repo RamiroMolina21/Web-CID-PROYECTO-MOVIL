@@ -24,8 +24,16 @@
 
 .header-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
+}
+
+.header-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 44px;
 }
 
 .btn-primary {
@@ -62,9 +70,15 @@
   background: var(--bg-hover);
 }
 
+/* Barra de búsqueda + contador: queda fija sobre la lista (la lista tiene su propio scroll en escritorio) */
+.usuarios-toolbar {
+  display: grid;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+
 .search-bar {
   position: relative;
-  margin-bottom: 2rem;
 }
 
 .search-input {
@@ -89,14 +103,65 @@
   left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.25rem;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
+.usuarios-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.usuarios-count strong {
+  color: var(--text-heading);
+}
+
+/* Móvil y tablet: la lista usa el scroll de la página (sin scroll anidado). */
+.usuarios-scroll {
+  border-radius: 12px;
+}
+
+/* Escritorio (con menú lateral fijo): la lista tiene scroll propio y la cabecera queda a la vista. */
+@media (min-width: 1024px) {
+  .usuarios-scroll {
+    max-height: calc(100dvh - 15.5rem);
+    min-height: 18rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 0.5rem 0.5rem 0.25rem;
+    margin: 0 -0.5rem 0 -0.25rem;
+    scrollbar-gutter: stable;
+  }
+}
+
+.usuarios-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .estudiantes-grid {
+  list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: 1.25rem;
+}
+
+.usuarios-more {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 0 0.5rem;
+}
+
+.usuarios-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
+.usuarios-more__rest {
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .estudiante-card {
@@ -161,12 +226,18 @@
 }
 
 .detail-icon {
-  font-size: 1rem;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.detail-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .estudiante-notas {
   font-size: 0.875rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-style: italic;
   margin-top: 0.5rem;
 }
@@ -211,6 +282,9 @@
 }
 
 .empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
   text-align: center;
   padding: 3rem;
   background: var(--bg-card);
@@ -218,3 +292,190 @@
   color: var(--text-secondary);
 }
 
+
+.estudiante-card .estudiante-info {
+  min-width: 0;
+}
+
+.btn-edit,
+.btn-delete {
+  min-height: 40px;
+}
+
+@media (max-width: 640px) {
+  .estudiantes-page .page-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .estudiante-card {
+    flex-wrap: wrap;
+    padding: 1.125rem;
+  }
+
+  .estudiante-avatar-large {
+    width: 48px;
+    height: 48px;
+    font-size: 1.125rem;
+  }
+
+  .estudiante-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .estudiante-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ---------- Contraste WCAG AA (tokens; claro y oscuro) ---------- */
+.estudiante-id {
+  color: var(--text-label);
+}
+
+.btn-delete {
+  color: var(--danger-strong);
+}
+
+.btn-secondary {
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+/* ---------- Filtros (búsqueda, rol, estado) y estado de la cuenta ---------- */
+.usuarios-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usuarios-filtros .search-bar {
+  flex: 1 1 260px;
+}
+
+.usuarios-rol .select {
+  min-height: 44px;
+  min-width: 11rem;
+}
+
+.usuarios-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.usuarios-count__spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.estudiante-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+.estudiante-tags .estudiante-id {
+  margin-bottom: 0;
+}
+
+.cuenta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cuenta-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.cuenta-badge--activa { background: var(--success-bg); color: var(--success-text); }
+.cuenta-badge--inactiva { background: var(--neutral-bg); color: var(--neutral-text); }
+
+.estudiante-card.is-inactive .estudiante-avatar-large {
+  background: var(--neutral-text);
+}
+
+.estudiante-card--skeleton {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 7rem;
+}
+
+.btn-estado {
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-estado--off { color: var(--warning-text); }
+.btn-estado--on { color: var(--success-text); }
+.btn-estado:hover:not(:disabled) { background: var(--bg-hover); }
+.btn-estado:disabled { opacity: 0.55; cursor: progress; }
+
+@media (max-width: 640px) {
+  .usuarios-filtros > * {
+    flex: 1 1 100%;
+  }
+
+  .estudiante-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1023px) {
+  .btn-edit,
+  .btn-delete,
+  .btn-estado {
+    min-height: 44px;
+  }
+}
+
+/* Resumen tras eliminar un usuario */
+.resumen-eliminacion {
+  list-style: none;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.resumen-eliminacion li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.resumen-eliminacion li .icon {
+  margin-top: 0.1875rem;
+  color: var(--success-dot);
+}
+
+.resumen-eliminacion li[data-clave='tutoriasDesasignadas'] .icon {
+  color: var(--warning-dot);
+}
+
+.resumen-eliminacion__vacio {
+  color: var(--text-secondary);
+}

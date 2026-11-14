@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useData } from '../context/DataContext'
 import TimePicker from './TimePicker'
 import './FormularioHorario.css'
+import Icon from './ui/Icon'
 
 const FormularioHorario = ({ horario, onClose, onSave }) => {
   const { addHorario, updateHorario, horarios, docentes } = useData()
@@ -16,8 +17,9 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
     sabado: false,
     domingo: false
   })
+  // Sin campo "título": el servidor lo genera ("{espacio} · dd/MM/yyyy HH:mm–HH:mm") al crear y lo regenera
+  // al editar si era generado; los escritos a mano se conservan. Por eso nunca se envía desde aquí.
   const [formData, setFormData] = useState({
-    titulo: horario?.titulo || '',
     docenteId: horario?.docenteId || '',
     fecha: horario?.fecha || '',
     fechaFin: horario?.fechaFin || horario?.fecha || '',
@@ -91,7 +93,7 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
     })
 
     if (conflictingHorario) {
-      setError(`⚠️ Conflicto con el horario "${conflictingHorario.titulo || 'Sin título'}" (${conflictingHorario.horaInicio} - ${conflictingHorario.horaFin})`)
+      setError(`Conflicto con el horario "${conflictingHorario.titulo || 'Sin título'}" (${conflictingHorario.horaInicio} - ${conflictingHorario.horaFin})`)
       return true
     }
     return false
@@ -123,9 +125,16 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
       return
     }
 
+    // Contrato: cupos = máximo de estudiantes de la tutoría, entero de 1 a 1000 (si no, 400)
+    const cupos = Number(formData.cuposDisponibles)
+    if (!Number.isInteger(cupos) || cupos < 1 || cupos > 1000) {
+      setError('Los cupos deben ser un número entero entre 1 y 1000')
+      return
+    }
+
     // Validar que la fecha fin sea posterior o igual a la fecha inicio
     if (new Date(formData.fechaFin) < new Date(formData.fecha)) {
-      setError('⚠️ La fecha de fin debe ser igual o posterior a la fecha de inicio')
+      setError('La fecha de fin debe ser igual o posterior a la fecha de inicio')
       return
     }
 
@@ -133,7 +142,7 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
     if (isRecurrente) {
       const hayDiasSeleccionados = Object.values(diasSeleccionados).some(dia => dia)
       if (!hayDiasSeleccionados) {
-        setError('⚠️ Por favor selecciona al menos un día de la semana para la recurrencia')
+        setError('Por favor selecciona al menos un día de la semana para la recurrencia')
         return
       }
     }
@@ -157,14 +166,14 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
 
     // Validar que haya al menos una fecha
     if (fechas.length === 0) {
-      setError('⚠️ No se encontraron fechas válidas con la configuración seleccionada')
+      setError('No se encontraron fechas válidas con la configuración seleccionada')
       return
     }
 
       // Verificar conflictos para cada fecha
     for (const fechaStr of fechas) {
       if (checkConflict(fechaStr, formData.horaInicio, formData.horaFin)) {
-        setError(`⚠️ Ya existe un horario programado para el día ${fechaStr} en el horario seleccionado.`)
+        setError(`Ya existe un horario programado para el día ${fechaStr} en el horario seleccionado.`)
         return
       }
     }
@@ -226,43 +235,42 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
           )}
           <div className="form-columns">
             <div className="form-column">
-              <div className="form-group">
-                <label>Título</label>
-                <input
-                  type="text"
-                  name="titulo"
-                  value={formData.titulo}
-                  onChange={handleChange}
-                  placeholder="Ej: Tutoría de Matemáticas"
-                />
-              </div>
+              {horario?.titulo && (
+                <div className="form-group horario-titulo-actual">
+                  <span className="form-label-static">Título</span>
+                  <p className="horario-titulo-actual__valor">{horario.titulo}</p>
+                  <p className="horario-titulo-actual__hint">Se genera automáticamente a partir del espacio, la fecha y la hora.</p>
+                </div>
+              )}
 
               <div className="form-group">
-                <label>Fecha *</label>
+                <label htmlFor="fh-fecha">Fecha *</label>
                 <div className="input-with-icon">
                   <input
                     type="date"
+                    id="fh-fecha"
                     name="fecha"
                     value={formData.fecha}
                     onChange={handleChange}
                     required
                   />
-                  <span className="input-icon">📅</span>
+                  <Icon name="calendar" size={18} className="input-icon" />
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Fecha Fin *</label>
+                <label htmlFor="fh-fechaFin">Fecha Fin *</label>
                 <div className="input-with-icon">
                   <input
                     type="date"
+                    id="fh-fechaFin"
                     name="fechaFin"
                     value={formData.fechaFin}
                     onChange={handleChange}
                     min={formData.fecha}
                     required
                   />
-                  <span className="input-icon">📅</span>
+                  <Icon name="calendar" size={18} className="input-icon" />
                 </div>
               </div>
 
@@ -321,7 +329,7 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
                     onChange={handleChange}
                     placeholder="--:--"
                   />
-                  <span className="input-icon">🕐</span>
+                  <Icon name="clock" size={18} className="input-icon" />
                 </div>
               </div>
             </div>
@@ -336,50 +344,56 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
                     onChange={handleChange}
                     placeholder="--:--"
                   />
-                  <span className="input-icon">🕐</span>
+                  <Icon name="clock" size={18} className="input-icon" />
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Cupos Disponibles</label>
+                <label htmlFor="horario-cupos">Cupos (máx. estudiantes)</label>
                 <div className="input-with-icon">
                   <input
+                    id="horario-cupos"
                     type="number"
                     name="cuposDisponibles"
                     value={formData.cuposDisponibles}
                     onChange={handleChange}
                     min="1"
+                    max="1000"
+                    step="1"
+                    inputMode="numeric"
                   />
-                  <span className="input-icon">👥</span>
+                  <Icon name="users" size={18} className="input-icon" />
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Aula *</label>
+                <label htmlFor="fh-salon">Aula *</label>
                 <div className="input-with-icon">
                   <input
                     type="text"
+                    id="fh-salon"
                     name="salon"
                     value={formData.salon}
                     onChange={handleChange}
                     placeholder="Ej: Aula 301"
                     required
                   />
-                  <span className="input-icon">📍</span>
+                  <Icon name="mapPin" size={18} className="input-icon" />
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Docente / Tutor</label>
+                <label htmlFor="fh-docenteId">Docente / Tutor</label>
                 <div className="input-with-icon">
                   <select
+                    id="fh-docenteId"
                     name="docenteId"
                     value={formData.docenteId}
                     onChange={handleChange}
                   >
                     <option value="">-- Seleccionar --</option>
                     {docentes && docentes.length > 0 ? (
-                      docentes.map(d => (
+                      docentes.filter(d => d.activo !== false || String(d.id) === String(formData.docenteId)).map(d => (
                         <option key={d.id} value={d.id}>
                           {d.nombre || (d.nombres && d.apellidos ? `${d.nombres} ${d.apellidos}`.trim() : d.nombres || `Docente ${d.id}`)} {d.rol ? `(${d.rol})` : ''}
                         </option>
@@ -388,7 +402,7 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
                       <option value="">No hay docentes disponibles</option>
                     )}
                   </select>
-                  <span className="input-icon">👩‍🏫</span>
+                  <Icon name="teacher" size={18} className="input-icon" />
                 </div>
               </div>
             </div>
@@ -396,10 +410,10 @@ const FormularioHorario = ({ horario, onClose, onSave }) => {
 
           <div className="form-actions">
             <button type="button" onClick={onClose} className="btn-cancel">
-              ✕ Cancelar
+              <Icon name="close" size={18} /> Cancelar
             </button>
             <button type="submit" className="btn-save">
-              💾 Guardar
+              <Icon name="save" size={18} /> Guardar
             </button>
           </div>
         </form>

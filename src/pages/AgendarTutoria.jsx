@@ -4,6 +4,8 @@ import FormularioTutoria from '../components/FormularioTutoria'
 import TutoriaDetailModal from '../components/TutoriaDetailModal'
 import AgregarEstudianteATutoriaModal from '../components/AgregarEstudianteATutoriaModal'
 import './AgendarTutoria.css'
+import { ETIQUETA_SIN_ASIGNAR } from '../lib/usuarios'
+import Icon from '../components/ui/Icon'
 
 const AgendarTutoria = () => {
   const { horarios, getHorariosDisponibles, tutorias, getDocenteById, loadData } = useData()
@@ -183,7 +185,7 @@ const AgendarTutoria = () => {
       <div className="agendar-content">
         <div className="horarios-section">
           <div className="section-header">
-            <h3>📅 Horarios Disponibles</h3>
+            <h3><Icon name="calendar" size={20} className="icon--inline" />Horarios Disponibles</h3>
             <div className="search-controls">
               <input
                 type="text"
@@ -234,7 +236,7 @@ const AgendarTutoria = () => {
                     <span className="badge available">Disponible</span>
                     {esRecurrente && (
                       <span className="badge recurrente" title={`Horario recurrente con ${horario.totalOcurrencias} fechas disponibles`}>
-                        🔄 Recurrente ({horario.totalOcurrencias})
+                        <Icon name="repeat" size={14} className="icon--inline" />Recurrente ({horario.totalOcurrencias})
                       </span>
                     )}
                     {selectedHorario?.grupoId === horario.grupoId || selectedHorario?.id === horario.id ? (
@@ -247,8 +249,8 @@ const AgendarTutoria = () => {
                 </div>
                 <h4>{horario.titulo || 'Sin título'}</h4>
                 <div className="horario-info">
-                  <span>📅 {esRecurrente ? 'Múltiples fechas disponibles' : formatDate(horario.fecha)}</span>
-                  <span>🕐 {horario.horaInicio} - {horario.horaFin}</span>
+                  <span><Icon name="calendar" size={16} className="icon--inline" />{esRecurrente ? 'Múltiples fechas disponibles' : formatDate(horario.fecha)}</span>
+                  <span><Icon name="clock" size={16} className="icon--inline" />{horario.horaInicio} - {horario.horaFin}</span>
                 </div>
                 {esRecurrente && horario.fechasDisponibles && horario.fechasDisponibles.length > 0 && (
                   <div className="fechas-recurrentes-hint">
@@ -277,7 +279,7 @@ const AgendarTutoria = () => {
 
         <div className="tutorias-section">
           <div className="section-header">
-            <h3>📚 Tutorías Agendadas</h3>
+            <h3><Icon name="book" size={20} className="icon--inline" />Tutorías Agendadas</h3>
             <div className="search-controls">
               <input
                 type="text"
@@ -298,7 +300,7 @@ const AgendarTutoria = () => {
 
           <div className="tutorias-list">
             {tutoriasAgendadas.length === 0 ? (
-              <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+              <p className="tutorias-empty">
                 No hay tutorías agendadas
               </p>
             ) : (
@@ -345,7 +347,7 @@ const AgendarTutoria = () => {
                             title={esFinalizada ? 'Esta tutoría ya está finalizada' : 'Agregar estudiante'}
                             style={esFinalizada ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                           >
-                            ➕ Agregar Estudiante
+                            <Icon name="plus" size={16} className="icon--inline" />Agregar Estudiante
                           </button>
                         )
                       })()}
@@ -354,14 +356,19 @@ const AgendarTutoria = () => {
                       <strong>{tutoria.idioma || ''} {tutoria.nivel || ''}</strong>
                       {tutoria.tema ? ` - ${tutoria.tema}` : ''}
                     </p>
-                    {docente && (
-                      <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '0.25rem 0' }}>
-                        👩‍🏫 Docente: {docente.nombre || (docente.nombres && docente.apellidos ? `${docente.nombres} ${docente.apellidos}`.trim() : 'Docente')}
+                    {tutoria.sinAsignar && (
+                      <p className="tutoria-docente tutoria-sin-asignar" style={{ fontSize: '0.85rem', margin: '0.25rem 0' }}>
+                        <Icon name="alert" size={16} className="icon--inline" />{ETIQUETA_SIN_ASIGNAR}
+                      </p>
+                    )}
+                    {docente && !tutoria.sinAsignar && (
+                      <p className="tutoria-docente" style={{ fontSize: '0.85rem', margin: '0.25rem 0' }}>
+                        <Icon name="teacher" size={16} className="icon--inline" />Docente: {docente.nombre || (docente.nombres && docente.apellidos ? `${docente.nombres} ${docente.apellidos}`.trim() : 'Docente')}
                       </p>
                     )}
                     <div className="tutoria-details">
-                      <span>📅 {formatShortDate(tutoria.fecha)}</span>
-                      <span>🕐 {tutoria.horaInicio}{tutoria.horaFin ? ` - ${tutoria.horaFin}` : ''}</span>
+                      <span><Icon name="calendar" size={16} className="icon--inline" />{formatShortDate(tutoria.fecha)}</span>
+                      <span><Icon name="clock" size={16} className="icon--inline" />{tutoria.horaInicio}{tutoria.horaFin ? ` - ${tutoria.horaFin}` : ''}</span>
                     </div>
                   </div>
                 )

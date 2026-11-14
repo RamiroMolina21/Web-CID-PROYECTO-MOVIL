@@ -259,3 +259,53 @@
 }
 
 
+
+/* Iconos SVG (antes emojis) */
+.empty-state .empty-icon {
+  margin: 0 auto 1rem;
+  color: var(--text-secondary);
+}
+
+.info-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ---------- Contraste WCAG AA ---------- */
+.stat-value {
+  color: var(--accent-text);
+}
+
+.tutoria-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Móvil: tarjetas sin desbordar a 320 px ---------- */
+.tutorias-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+}
+
+.tutoria-card {
+  min-width: 0;
+}
+
+.tutoria-card * {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .tutoria-card {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .tutorias-finalizadas-page .page-header .btn-primary {
+    min-height: 44px;
+  }
+
+  #searchInput {
+    min-height: 44px;
+  }
+}
