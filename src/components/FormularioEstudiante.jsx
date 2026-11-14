@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast } from './ui/Feedback'
 import './FormularioEstudiante.css'
+import Icon from './ui/Icon'
 
 const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
   const { addEstudiante, updateEstudiante } = useData()
+  const toast = useToast()
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -41,7 +44,7 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
       }
       onSave()
     } catch (error) {
-      alert(`Error: ${error.message || 'No se pudo guardar el estudiante'}`)
+      toast.error(`Error: ${error.message || 'No se pudo guardar el estudiante'}`)
     }
   }
 
@@ -53,8 +56,9 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
         </div>
         <form onSubmit={handleSubmit} className="formulario-estudiante-form">
           <div className="form-group">
-            <label>Nombres *</label>
+            <label htmlFor="est-nombre">Nombres *</label>
             <input
+              id="est-nombre"
               type="text"
               name="nombre"
               value={formData.nombre}
@@ -66,8 +70,9 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Apellidos *</label>
+            <label htmlFor="est-apellido">Apellidos *</label>
             <input
+              id="est-apellido"
               type="text"
               name="apellido"
               value={formData.apellido}
@@ -79,8 +84,9 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
           </div>
 
           <div className="form-group">
-            <label>Email *</label>
+            <label htmlFor="est-email">Email *</label>
             <input
+              id="est-email"
               type="email"
               name="email"
               value={formData.email}
@@ -93,10 +99,10 @@ const FormularioEstudiante = ({ estudiante, onClose, onSave }) => {
 
           <div className="form-actions">
             <button type="button" onClick={onClose} className="btn-cancel">
-              ✕ Cancelar
+              <Icon name="close" size={18} /> Cancelar
             </button>
             <button type="submit" className="btn-save">
-              💾 Guardar
+              <Icon name="save" size={18} /> Guardar
             </button>
           </div>
         </form>

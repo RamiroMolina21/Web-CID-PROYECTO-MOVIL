@@ -1,0 +1,112 @@
+@import './personal/personal.css';
+
+.config-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.config-page .page-head {
+  margin-bottom: 0.5rem;
+}
+
+.cuenta {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.avatar--lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1.125rem;
+}
+
+.cuenta__datos {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.cuenta__datos > div {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.cuenta__datos > div + div {
+  border-top: 1px solid var(--border-light);
+}
+
+.cuenta__datos dt {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.cuenta__datos dd {
+  color: var(--text-heading);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.cuenta__nota {
+  margin-top: 1rem;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field .input {
+  padding-right: 3rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.requisitos {
+  list-style: none;
+  display: grid;
+  gap: 0.375rem 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 640px) {
+  .requisitos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.requisitos li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.requisitos li.is-ok {
+  color: var(--success-text);
+}
+
+.requisitos li.is-ok .icon {
+  color: var(--success-dot);
+}
+
+.config-page .form-footer {
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .cuenta {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .cuenta__datos > div {
+    grid-template-columns: 1fr;
+    gap: 0.125rem;
+  }
+}

@@ -1,525 +1,148 @@
-import { API_BASE_URL, getDefaultHeaders } from '../config/apiConfig'
+// Servicios por dominio. Solo endpoints que EXISTEN en el contrato (docs/api/endpoints.md).
+import { request, downloadFile } from '../lib/apiClient'
 
-// Función auxiliar para manejar respuestas
-const handleResponse = async (response) => {
-  if (!response.ok) {
-    let errorMessage = `Error ${response.status}: ${response.statusText}`
-    
-    // Mensajes específicos para errores comunes
-    if (response.status === 502) {
-      errorMessage = '502 Bad Gateway: ngrok no puede conectarse a tu API .NET. Verifica que: 1) Tu API .NET esté corriendo en el puerto 5208, 2) ngrok esté configurado correctamente (debe usar http://localhost:5208, no https://), 3) No haya firewall bloqueando la conexión.'
-    } else if (response.status === 503) {
-      errorMessage = '503 Service Unavailable: El servidor no está disponible. Verifica que tu API .NET esté corriendo.'
-    } else if (response.status === 404) {
-      errorMessage = `404 Not Found: El endpoint ${response.url} no existe. Verifica la URL de la API.`
-    } else if (response.status === 403) {
-      errorMessage = '403 Forbidden: Acceso denegado. Verifica los permisos de CORS en tu API .NET. Asegúrate de que CORS permita el origen de tu aplicación React.'
-    } else if (response.status === 500) {
-      // Mensaje genérico para 500, se reemplazará si hay un mensaje específico del servidor
-      errorMessage = '500 Error interno del servidor. El servidor encontró un error al procesar la solicitud.'
-    } else if (response.status === 0) {
-      errorMessage = 'Error de CORS: No se pudo conectar con la API. Verifica que: 1) La API .NET tenga CORS configurado correctamente, 2) ngrok esté corriendo, 3) La URL de la API sea correcta.'
-    }
-    
-    let errorData = null
-    try {
-      errorData = await response.json()
-      // Si hay un objeto de error con más detalles, intentar extraerlos
-      if (errorData.errors && typeof errorData.errors === 'object') {
-        // ModelState errors de .NET
-        const errorMessages = Object.entries(errorData.errors)
-          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-          .join('; ')
-        errorMessage = errorMessages || errorData.message || errorMessage
-        console.error('Validation errors:', errorData.errors)
-      } else {
-        // Usar el mensaje del error, y si hay detalles, agregarlos
-        errorMessage = errorData.message || errorMessage
-        if (errorData.details && errorData.details !== errorData.message) {
-          errorMessage = `${errorMessage}: ${errorData.details}`
-        }
-      }
-      console.error('API Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.url,
-        error: errorData,
-        message: errorMessage
-      })
-    } catch (e) {
-      // Si no se puede parsear el JSON, usar el mensaje por defecto
-      console.error('Error parsing error response:', e)
-      console.error('API Error Response (raw):', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.url
-      })
-    }
-    
-    // Crear un error con información adicional
-    const apiError = new Error(errorMessage)
-    apiError.response = {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.url,
-      data: errorData
-    }
-    throw apiError
-  }
-  
-  // Si la respuesta está vacía (status 204 No Content), retornar null
-  if (response.status === 204) {
-    return null
-  }
-  
-  // Intentar parsear JSON, si falla retornar un objeto vacío
-  try {
-    const data = await response.json()
-    return data
-  } catch (e) {
-    console.warn('Error parsing JSON response, returning empty object:', e)
-    return {}
-  }
-}
-
-// Función auxiliar para descargar archivos
-const downloadFile = async (endpoint, filename = null) => {
-  const url = `${API_BASE_URL}${endpoint}`
-  const defaultHeaders = getDefaultHeaders()
-  
-  // Remover Content-Type y Accept para descargas de archivos
-  const headers = { ...defaultHeaders }
-  delete headers['Content-Type']
-  delete headers['Accept']
-  
-  const config = {
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'omit',
-    headers: headers,
-  }
-
-  try {
-    console.log('Downloading file from:', url)
-    const response = await fetch(url, config)
-    
-    if (!response.ok) {
-      // Para errores, intentar obtener un mensaje de error
-      let errorMessage = `Error ${response.status}: ${response.statusText}`
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.message || errorMessage
-      } catch (e) {
-        // Si no se puede parsear como JSON, usar el mensaje por defecto
-      }
-      throw new Error(errorMessage)
-    }
-    
-    // Obtener el nombre del archivo del header Content-Disposition si está disponible
-    const contentDisposition = response.headers.get('content-disposition')
-    let downloadFilename = filename
-    
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-      if (filenameMatch && filenameMatch[1]) {
-        downloadFilename = filenameMatch[1].replace(/['"]/g, '')
-        // Decodificar si viene codificado
-        if (downloadFilename.startsWith("UTF-8''")) {
-          downloadFilename = decodeURIComponent(downloadFilename.replace("UTF-8''", ''))
-        }
-      }
-    }
-    
-    // Si no hay nombre de archivo, usar uno por defecto
-    if (!downloadFilename) {
-      downloadFilename = `reporte_${Date.now()}.xlsx`
-    }
-    
-    // Convertir la respuesta a blob
-    const blob = await response.blob()
-    
-    // Crear un enlace temporal para descargar
-    const downloadUrl = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = downloadFilename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(downloadUrl)
-    
-    console.log('File downloaded successfully:', downloadFilename)
-    return { success: true, filename: downloadFilename }
-  } catch (error) {
-    console.error('Error downloading file:', error)
-    throw error
-  }
-}
-
-// Función auxiliar para hacer peticiones
-const request = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`
-  const defaultHeaders = getDefaultHeaders()
-  
-  // Configuración de la petición con CORS explícito
-  const config = {
-    method: options.method || 'GET',
-    mode: 'cors', // Asegurar que se use CORS
-    credentials: 'omit', // No enviar cookies automáticamente (puede causar problemas con CORS)
-    headers: {
-      ...defaultHeaders,
-      ...options.headers, // Los headers personalizados tienen prioridad
-    },
-  }
-  
-  // Solo incluir body si existe y no es GET o HEAD
-  if (options.body && config.method !== 'GET' && config.method !== 'HEAD') {
-    config.body = options.body
-  }
-  
-  // Si hay opciones adicionales como cache, redirect, etc., incluirlas
-  if (options.cache !== undefined) config.cache = options.cache
-  if (options.redirect !== undefined) config.redirect = options.redirect
-
-  try {
-    // Log del body si existe (para debugging)
-    if (config.body) {
-      try {
-        const bodyData = JSON.parse(config.body)
-        console.log('Making API request to:', url, {
-          method: config.method,
-          body: bodyData,
-          headers: config.headers
-        })
-      } catch (e) {
-        console.log('Making API request to:', url, {
-          method: config.method,
-          headers: config.headers
-        })
-      }
-    } else {
-      console.log('Making API request to:', url, {
-        method: config.method,
-        headers: config.headers
-      })
-    }
-    
-    const response = await fetch(url, config)
-    console.log('API Response:', { status: response.status, statusText: response.statusText, url: response.url })
-    return handleResponse(response)
-  } catch (error) {
-    console.error('API Request Error:', {
-      error: error.message,
-      url: url,
-      name: error.name,
-      stack: error.stack
-    })
-    
-    // Si es un error de red, proporcionar un mensaje más útil
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'TypeError') {
-      const ngrokUrl = API_BASE_URL.replace('/api', '')
-      throw new Error(`Error de conexión: No se pudo conectar con la API a través de ngrok. Verifica que: 1) ngrok esté corriendo en ${ngrokUrl}, 2) tu API .NET esté ejecutándose en http://localhost:5208, 3) ngrok esté configurado correctamente (debe redirigir a http://localhost:5208, no https://), 4) La API .NET tenga CORS configurado para permitir peticiones desde tu aplicación React (debe permitir http://localhost:5173).`)
-    }
-    throw error
-  }
-}
+const enc = encodeURIComponent
 
 // ==================== AUTH ====================
 export const authService = {
-  login: async (correo, contrasena) => {
-    const response = await request('/Auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ Correo: correo, Contrasena: contrasena }),
-    })
-    
-    // Guardar token si viene en la respuesta
-    if (response.token) {
-      localStorage.setItem('authToken', response.token)
-    }
-    
-    return response
-  },
+  /** POST /Auth/login → { message, token, tokenType, expiresAt, usuario } */
+  login: (correo, contrasena) =>
+    request('/Auth/login', { method: 'POST', body: { correo, contrasena }, auth: false }),
+
+  /** GET /Auth/me → UsuarioResponse (requiere token). Se pasa el token explícito al restaurar sesión. */
+  me: (token, signal) =>
+    request('/Auth/me', {
+      signal,
+      auth: !token,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+
+  /** PUT /Auth/contrasena → 204. 400 con `message`/`errors`, 401, 429 (5 intentos / 15 min por usuario). */
+  cambiarContrasena: (contrasenaActual, contrasenaNueva) =>
+    request('/Auth/contrasena', { method: 'PUT', body: { contrasenaActual, contrasenaNueva } }),
 }
 
 // ==================== USUARIOS ====================
 export const usuarioService = {
-  // Obtener todos los usuarios
-  getAll: async () => {
-    return request('/Usuario')
+  getAll: (signal) => request('/Usuario', { signal }),
+  /**
+   * GET /Usuario paginado (aditivo): { page, pageSize (1–100), q, rol, activo } → { items, total }.
+   * total = cabecera X-Total-Count (expuesta por CORS). Sin parámetros el backend devuelve todo: usar getAll.
+   */
+  buscar: async ({ page = 1, pageSize = 20, q, rol, activo } = {}, signal) => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+    if (q && q.trim()) params.set('q', q.trim())
+    if (rol) params.set('rol', rol)
+    if (activo === true || activo === false) params.set('activo', String(activo))
+    const response = await request(`/Usuario?${params}`, { signal, raw: true })
+    const items = await response.json()
+    const total = Number(response.headers.get('X-Total-Count'))
+    return { items: Array.isArray(items) ? items : [], total: Number.isFinite(total) ? total : items.length }
   },
-
-  // Obtener usuario por ID
-  getById: async (id) => {
-    return request(`/Usuario/${id}`)
-  },
-
-  // Obtener usuarios por rol
-  getByRol: async (tipoRol) => {
-    return request(`/Usuario/by-rol/${tipoRol}`)
-  },
-
-  // Crear usuario
-  create: async (usuarioData) => {
-    return request('/Usuario', {
-      method: 'POST',
-      body: JSON.stringify(usuarioData),
-    })
-  },
-
-  // Actualizar usuario
-  update: async (id, usuarioData) => {
-    return request(`/Usuario/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(usuarioData),
-    })
-  },
-
-  // Eliminar usuario
-  delete: async (id) => {
-    return request(`/Usuario/${id}`, {
-      method: 'DELETE',
-    })
-  },
+  /** PATCH /Usuario/{id}/estado { activo } → UsuarioResponse. 403 Auxiliar sobre no Estudiante; 409 último admin / propia cuenta. */
+  setEstado: (id, activo) => request(`/Usuario/${id}/estado`, { method: 'PATCH', body: { activo } }),
+  getById: (id) => request(`/Usuario/${id}`),
+  /** Política Personal: los 4 roles con acceso. */
+  getByRol: (tipoRol, signal) => request(`/Usuario/by-rol/${enc(tipoRol)}`, { signal }),
+  create: (data) => request('/Usuario', { method: 'POST', body: data }),
+  update: (id, data) => request(`/Usuario/${id}`, { method: 'PUT', body: data }),
+  delete: (id) => request(`/Usuario/${id}`, { method: 'DELETE' }),
 }
 
 // ==================== HORARIOS ====================
 export const horarioService = {
-  // Obtener todos los horarios
-  getAll: async () => {
-    return request('/Horario')
-  },
-
-  // Obtener horario por ID
-  getById: async (id) => {
-    return request(`/Horario/${id}`)
-  },
-
-  // Obtener horarios disponibles
-  getDisponibles: async () => {
-    return request('/Horario/disponibles')
-  },
-
-  // Obtener horarios por usuario
-  getByUsuario: async (usuarioId) => {
-    return request(`/Horario/usuario/${usuarioId}`)
-  },
-
-  // Crear horario
-  create: async (horarioData) => {
-    return request('/Horario', {
-      method: 'POST',
-      body: JSON.stringify(horarioData),
-    })
-  },
-
-  // Actualizar horario
-  update: async (id, horarioData) => {
-    return request(`/Horario/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(horarioData),
-    })
-  },
-
-  // Eliminar horario
-  delete: async (id) => {
-    return request(`/Horario/${id}`, {
-      method: 'DELETE',
-    })
-  },
+  getAll: (signal) => request('/Horario', { signal }),
+  getById: (id) => request(`/Horario/${id}`),
+  getDisponibles: (signal) => request('/Horario/disponibles', { signal }),
+  /** Docente/Tutor: solo su propio id (403 si no). */
+  getByUsuario: (usuarioId, signal) => request(`/Horario/usuario/${usuarioId}`, { signal }),
+  create: (data) => request('/Horario', { method: 'POST', body: data }),
+  update: (id, data) => request(`/Horario/${id}`, { method: 'PUT', body: data }),
+  delete: (id) => request(`/Horario/${id}`, { method: 'DELETE' }),
 }
 
 // ==================== TUTORIAS ====================
 export const tutoriaService = {
-  // Obtener todas las tutorías
-  getAll: async () => {
-    return request('/Tutoria')
+  getAll: (signal) => request('/Tutoria', { signal }),
+  getById: (id, signal) => request(`/Tutoria/${id}`, { signal }),
+  create: (data) => request('/Tutoria', { method: 'POST', body: data }),
+  update: (id, data) => request(`/Tutoria/${id}`, { method: 'PUT', body: data }),
+  delete: (id) => {
+    const tutoriaId = parseInt(id, 10)
+    if (Number.isNaN(tutoriaId)) throw new Error(`ID de tutoría inválido: ${id}`)
+    return request(`/Tutoria/${tutoriaId}`, { method: 'DELETE' })
   },
-
-  // Obtener tutoria por ID
-  getById: async (id) => {
-    return request(`/Tutoria/${id}`)
-  },
-
-  // Crear tutoria
-  create: async (tutoriaData) => {
-    return request('/Tutoria', {
-      method: 'POST',
-      body: JSON.stringify(tutoriaData),
-    })
-  },
-
-  // Actualizar tutoria
-  update: async (id, tutoriaData) => {
-    return request(`/Tutoria/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(tutoriaData),
-    })
-  },
-
-  // Eliminar tutoria
-  delete: async (id) => {
-    const tutoriaId = parseInt(id)
-    if (isNaN(tutoriaId)) {
-      throw new Error(`ID de tutoría inválido: ${id}`)
-    }
-    console.log(`[tutoriaService.delete] Llamando DELETE /Tutoria/${tutoriaId}`)
-    return request(`/Tutoria/${tutoriaId}`, {
-      method: 'DELETE',
-    })
-  },
-
-  // Agregar estudiantes a tutoria
-  agregarEstudiantes: async (id, estudiantesDto) => {
-    return request(`/Tutoria/${id}/estudiantes`, {
-      method: 'POST',
-      body: JSON.stringify(estudiantesDto),
-    })
-  },
-
-  // Obtener estudiantes de una tutoria
-  getEstudiantesByTutoria: async (id) => {
-    return request(`/Tutoria/${id}/estudiantes`)
-  },
-
-  // Eliminar estudiante de una tutoria
-  eliminarEstudiante: async (tutoriaId, estudianteId) => {
-    return request(`/Tutoria/${tutoriaId}/estudiantes/${estudianteId}`, {
-      method: 'DELETE',
-    })
-  },
-
-  // Obtener calendario por docente
-  getCalendarioPorDocente: async (nombre, apellidos, correo) => {
-    const params = new URLSearchParams({ nombre, apellidos, correo })
-    return request(`/Tutoria/calendario/docente?${params}`)
-  },
-
-  // Obtener calendario por estudiante
-  getCalendarioPorEstudiante: async (nombre, apellidos, correo) => {
-    const params = new URLSearchParams({ nombre, apellidos, correo })
-    return request(`/Tutoria/calendario/estudiante?${params}`)
-  },
-
-  // Obtener calendario por idioma y nivel
-  getCalendarioPorIdiomaNivel: async (idioma, nivel) => {
-    const params = new URLSearchParams({ idioma, nivel })
-    return request(`/Tutoria/calendario/idioma-nivel?${params}`)
-  },
+  /** body: { estudianteIds: number[] } — todo o nada; 400 si todos ya estaban asignados. */
+  agregarEstudiantes: (id, estudiantesDto) =>
+    request(`/Tutoria/${id}/estudiantes`, { method: 'POST', body: estudiantesDto }),
+  getEstudiantesByTutoria: (id, signal) => request(`/Tutoria/${id}/estudiantes`, { signal }),
+  eliminarEstudiante: (tutoriaId, estudianteId) =>
+    request(`/Tutoria/${tutoriaId}/estudiantes/${estudianteId}`, { method: 'DELETE' }),
+  getCalendarioPorDocente: (nombre, apellidos, correo) =>
+    request(`/Tutoria/calendario/docente?${new URLSearchParams({ nombre, apellidos, correo })}`),
+  getCalendarioPorEstudiante: (nombre, apellidos, correo) =>
+    request(`/Tutoria/calendario/estudiante?${new URLSearchParams({ nombre, apellidos, correo })}`),
+  getCalendarioPorIdiomaNivel: (idioma, nivel) =>
+    request(`/Tutoria/calendario/idioma-nivel?${new URLSearchParams({ idioma, nivel })}`),
+  /** Tutorías ASIGNADAS al usuario. `estado` acepta grupos (pendiente|finalizada|cancelada). Docente/Tutor: solo su id. */
+  getByEstadoYUsuario: (estado, usuarioId, signal) =>
+    request(`/Tutoria/estado/${enc(estado)}/usuario/${usuarioId}`, { signal }),
+  /** Tutorías AGENDADAS en horarios del usuario (dueño del horario). Docente/Tutor: solo su id. */
+  getAgendadas: (usuarioId, estado, signal) =>
+    request(`/Tutoria/agendadas/usuario/${usuarioId}${estado ? `?estado=${enc(estado)}` : ''}`, { signal }),
+  /**
+   * PUT /Tutoria/{id}/finalizar. Cuerpo opcional { calificacion, comentario }: crea la retroalimentación
+   * (autor = token) y finaliza en una transacción; el backend envía las encuestas.
+   */
+  finalizar: (id, body) =>
+    request(`/Tutoria/${id}/finalizar`, { method: 'PUT', ...(body ? { body } : {}) }),
 }
 
 // ==================== NOTIFICACIONES ====================
 export const notificacionService = {
-  // Obtener todas las notificaciones
-  getAll: async () => {
-    return request('/Notificacion')
-  },
-
-  // Obtener notificación por ID
-  getById: async (id) => {
-    return request(`/Notificacion/${id}`)
-  },
-
-  // Obtener notificaciones por usuario
-  getByUsuario: async (usuarioId) => {
-    return request(`/Notificacion/usuario/${usuarioId}`)
-  },
-
-  // Eliminar notificación
-  delete: async (id) => {
-    return request(`/Notificacion/${id}`, {
-      method: 'DELETE',
-    })
-  },
-
-  // Descargar reporte Excel
-  exportarReporteExcel: async (tutoriaId) => {
-    return downloadFile(`/Notificacion/reporte-excel/${tutoriaId}`)
-  },
+  getAll: () => request('/Notificacion'),
+  getById: (id) => request(`/Notificacion/${id}`),
+  getByUsuario: (usuarioId) => request(`/Notificacion/usuario/${usuarioId}`),
+  delete: (id) => request(`/Notificacion/${id}`, { method: 'DELETE' }),
+  exportarReporteExcel: (tutoriaId) => downloadFile(`/Notificacion/reporte-excel/${tutoriaId}`),
 }
 
 // ==================== RETROALIMENTACION ====================
 export const retroalimentacionService = {
-  // Obtener todas las retroalimentaciones
-  getAll: async () => {
-    return request('/Retroalimentacion')
-  },
-
-  // Obtener retroalimentación por ID
-  getById: async (id) => {
-    return request(`/Retroalimentacion/${id}`)
-  },
-
-  // Obtener retroalimentaciones por tutoria
-  getByTutoria: async (tutoriaId) => {
-    return request(`/Retroalimentacion/tutoria/${tutoriaId}`)
-  },
-
-  // Obtener retroalimentaciones por usuario
-  getByUsuario: async (usuarioId) => {
-    return request(`/Retroalimentacion/usuario/${usuarioId}`)
-  },
-
-  // Crear retroalimentación
-  create: async (retroalimentacionData) => {
-    return request('/Retroalimentacion', {
-      method: 'POST',
-      body: JSON.stringify(retroalimentacionData),
-    })
-  },
-
-  // Actualizar retroalimentación
-  update: async (id, retroalimentacionData) => {
-    return request(`/Retroalimentacion/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(retroalimentacionData),
-    })
-  },
-
-  // Eliminar retroalimentación
-  delete: async (id) => {
-    return request(`/Retroalimentacion/${id}`, {
-      method: 'DELETE',
-    })
-  },
+  getAll: () => request('/Retroalimentacion'),
+  getById: (id) => request(`/Retroalimentacion/${id}`),
+  /** Participantes (Docente/Tutor) y gestión. */
+  getByTutoria: (tutoriaId, signal) => request(`/Retroalimentacion/tutoria/${tutoriaId}`, { signal }),
+  getByUsuario: (usuarioId) => request(`/Retroalimentacion/usuario/${usuarioId}`),
+  /** body: { comentario: string|null, calificacion: 1–5 decimal, tutoriaId, usuarioId } */
+  create: (data) => request('/Retroalimentacion', { method: 'POST', body: data }),
+  update: (id, data) => request(`/Retroalimentacion/${id}`, { method: 'PUT', body: data }),
+  delete: (id) => request(`/Retroalimentacion/${id}`, { method: 'DELETE' }),
 }
 
 // ==================== ENCUESTAS ====================
 export const encuestaService = {
-  // Verificar token antes de mostrar el formulario
-  verificarToken: async (token) => {
-    return request(`/Encuesta/verificar/${token}`)
-  },
-
-  // Enviar respuesta de encuesta (sin Authorization — endpoint público)
-  responder: async (data) => {
-    return request('/Encuesta/responder', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-    })
-  },
-
-  // Obtener encuestas de una tutoría
-  getByTutoria: async (tutoriaId) => {
-    return request(`/Encuesta/tutoria/${tutoriaId}`)
-  },
-
-  // Estadísticas para el dashboard
-  getEstadisticas: async () => {
-    return request('/Encuesta/estadisticas')
-  },
+  // Públicos: sin Authorization
+  verificarToken: (token) => request(`/Encuesta/verificar/${enc(token)}`, { auth: false }),
+  responder: (data) => request('/Encuesta/responder', { method: 'POST', body: data, auth: false }),
+  getByTutoria: (tutoriaId) => request(`/Encuesta/tutoria/${tutoriaId}`),
+  getEstadisticas: () => request('/Encuesta/estadisticas'),
+  /** Tutorías con encuestas sin responder: [{ tutoriaId, tema, fechaHora, enviadas, sinResponder }]. */
+  getPendientes: (signal) => request('/Encuesta/pendientes', { signal }),
 }
 
 // ==================== MÉTRICAS ====================
 export const metricasService = {
-  // Obtener métricas generales
-  getGenerales: async () => {
-    return request('/Metricas/generales')
-  },
-
-  // Obtener métricas de tutorías
-  getTutorias: async () => {
-    return request('/Metricas/tutorias')
-  },
+  getGenerales: () => request('/Metricas/generales'),
+  getTutorias: () => request('/Metricas/tutorias'),
 }
 
+// ==================== ATENCIÓN (asuntos atendidos del dashboard) ====================
+export const atencionService = {
+  /** GET /Atencion/atendidos[?tipo=] → [{ tipo, clave, usuarioId, usuarioNombre, fecha (UTC "Z") }] */
+  getAtendidos: (signal) => request('/Atencion/atendidos', { signal }),
+  /** POST { tipo, claves (1–200) } → estado final de esas claves. Idempotente (conserva el primero). */
+  marcar: (tipo, claves) => request('/Atencion/atendidos', { method: 'POST', body: { tipo, claves } }),
+  /** DELETE → 204 (también si no existía). */
+  deshacer: (tipo, clave) => request(`/Atencion/atendidos/${enc(tipo)}/${clave}`, { method: 'DELETE' }),
+}

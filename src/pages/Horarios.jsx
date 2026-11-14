@@ -1,12 +1,17 @@
 import React, { useState } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast, useConfirm } from '../components/ui/Feedback'
 import FormularioHorario from '../components/FormularioHorario'
 import TutoriaDetailModal from '../components/TutoriaDetailModal'
 import HorarioDetailModal from '../components/HorarioDetailModal'
 import './Horarios.css'
+import { ETIQUETA_ELIMINADO, ETIQUETA_SIN_ASIGNAR } from '../lib/usuarios'
+import Icon from '../components/ui/Icon'
 
 const Horarios = () => {
   const { tutorias, horarios, deleteHorario, loading, error, getDocenteById, docentes } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [showHorarioForm, setShowHorarioForm] = useState(false)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
   const [selectedHorario, setSelectedHorario] = useState(null)
@@ -406,6 +411,7 @@ const Horarios = () => {
   // Función helper para obtener el nombre del docente de un horario
   const getDocenteNombreFromHorario = (horario) => {
     if (!horario) return 'Docente'
+    if (horario.sinDueno) return ETIQUETA_ELIMINADO
     
     // Intentar obtener docente por ID
     let docente = null
@@ -445,6 +451,8 @@ const Horarios = () => {
   // Función helper para obtener el nombre del docente de una tutoría
   const getDocenteNombreFromTutoria = (tutoria) => {
     if (!tutoria) return 'Docente'
+    // Sin asignar (usuario eliminado): no se "rellena" con el dueño del horario
+    if (tutoria.sinAsignar) return ETIQUETA_SIN_ASIGNAR
     
     // Intentar obtener docente por ID (puede ser docenteId, usuarioId, etc.)
     let docente = null
@@ -645,7 +653,7 @@ const Horarios = () => {
       const hours = getHours()
 
       return (
-        <div className="calendar-week-view">
+        <div className="calendar-week-view" tabIndex={0} role="region" aria-label="Semana del calendario (desplazable)">
           <div className="calendar-week-header">
             <div className="calendar-timezone-header">GMT-05</div>
             {dates.map((date, idx) => (
@@ -803,29 +811,37 @@ const Horarios = () => {
                     const cuposTotal = horario.cuposDisponibles || 5
                     
                     return (
-                      <div 
+                      <button
+                        type="button"
                         key={`h-${horario.id}`}
                         className="month-horario-label"
+                        title={`${horario.titulo || 'Horario'} · ${getDocenteNombreFromHorario(horario)}`}
+                        aria-label={`Horario ${horario.horaInicio || ''} de ${getDocenteNombreFromHorario(horario)}`}
                         onClick={() => handleHorarioClick(horario)}
                       >
-                        {getDocenteNombreFromHorario(horario)}
+                        <span className="mlabel-full">{getDocenteNombreFromHorario(horario)}</span>
+                        <span className="mlabel-short" aria-hidden="true">{horario.horaInicio}</span>
                         {tutoriasDelHorario.length > 0 && (
                           <span className="month-cupos-badge"> {cuposOcupados}/{cuposTotal}</span>
                         )}
-                      </div>
+                      </button>
                     )
                   })}
                   {/* Mostrar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
                   {tutoriasForDate
                     .map((tutoria) => (
-                      <div 
-                        key={tutoria.id} 
+                      <button
+                        type="button"
+                        key={tutoria.id}
                         className="month-tutoria-label"
+                        title={getTutoriaDisplayText(tutoria)}
+                        aria-label={`Tutoría ${tutoria.horaInicio || ''}: ${getTutoriaDisplayText(tutoria)}`}
                         onClick={() => handleTutoriaClick(tutoria)}
                       >
-                        {getTutoriaDisplayText(tutoria)}
+                        <span className="mlabel-full">{getTutoriaDisplayText(tutoria)}</span>
+                        <span className="mlabel-short" aria-hidden="true">{tutoria.horaInicio}</span>
                         {tutoria.horarioId && <span className="month-tutoria-horario-badge"> (H)</span>}
-                      </div>
+                      </button>
                     ))}
                 </div>
               </div>
@@ -1013,7 +1029,7 @@ const Horarios = () => {
         </div>
         <div className="header-buttons">
           <button className="btn-secondary" onClick={() => setShowHorarioForm(true)}>
-            + Nuevo Horario
+            <Icon name="plus" size={18} className="icon--inline" />Nuevo Horario
           </button>
         </div>
       </div>
@@ -1049,12 +1065,12 @@ const Horarios = () => {
             setSelectedHorario(null)
           }}
           onDelete={async (id) => {
-            if (window.confirm('¿Estás seguro de que deseas eliminar este horario?')) {
+            if (await confirm({ title: 'Eliminar horario', message: '¿Seguro que deseas eliminar este horario? Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true })) {
               try {
                 await deleteHorario(id)
                 setSelectedHorario(null)
               } catch (error) {
-                alert(`Error: ${error.message || 'No se pudo eliminar el horario'}`)
+                toast.error(`Error: ${error.message || 'No se pudo eliminar el horario'}`)
               }
             }
           }}
@@ -1087,6 +1103,7 @@ const Horarios = () => {
             </div>
             <div className="calendar-actions">
               <select 
+                aria-label="Vista del calendario"
                 value={viewMode} 
                 onChange={(e) => setViewMode(e.target.value)}
                 className="view-select"

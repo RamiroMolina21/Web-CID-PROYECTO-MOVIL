@@ -1,10 +1,9 @@
+/* Modales "Agregar estudiante" (horario y tutoría). Tokens de index.css: claro y oscuro.
+   Antes tenía colores fijos de tema oscuro (#2d2d2d, azul #3b82f6) también en modo claro. */
 .agregar-estudiante-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,59 +12,61 @@
 }
 
 .agregar-estudiante-modal {
-  background: #2d2d2d;
-  border-radius: 12px;
+  background: var(--modal-bg);
+  color: var(--modal-text);
+  border: 1px solid var(--modal-border);
+  border-radius: var(--radius-md);
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  color: white;
+  box-shadow: var(--shadow-lg);
 }
 
 .agregar-estudiante-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #404040;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--modal-border);
 }
 
 .agregar-estudiante-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: white;
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--modal-text);
 }
 
 .agregar-estudiante-close {
+  flex-shrink: 0;
   background: transparent;
   border: none;
-  color: #a0a0a0;
-  font-size: 1.5rem;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: var(--modal-muted);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.18s, color 0.18s;
 }
 
 .agregar-estudiante-close:hover {
-  background: #404040;
-  color: white;
+  background: var(--modal-hover);
+  color: var(--modal-text);
 }
 
 .agregar-estudiante-warning {
-  background: #ef4444;
-  color: white;
-  padding: 1rem;
-  margin: 1rem 1.5rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  text-align: center;
+  background: var(--error-bg);
+  color: var(--danger-strong);
+  border: 1px solid var(--error-border);
+  padding: 0.875rem 1rem;
+  margin: 1rem 1.5rem 0;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .agregar-estudiante-form {
@@ -82,93 +83,108 @@
 }
 
 .agregar-estudiante-form-group label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #e6e6e6;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--modal-text);
 }
 
 .agregar-estudiante-select,
 .agregar-estudiante-input {
-  background: #1a1a1a;
-  border: 1px solid #404040;
-  border-radius: 8px;
-  padding: 0.75rem;
-  color: white;
-  font-size: 0.95rem;
-  transition: all 0.2s;
+  min-height: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 0.75rem;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9375rem;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .agregar-estudiante-select:focus,
 .agregar-estudiante-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .agregar-estudiante-select:disabled,
 .agregar-estudiante-input:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .agregar-estudiante-info {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--accent-hover-bg);
+  border: 1px solid var(--accent-light);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
   margin-top: 0.5rem;
 }
 
 .agregar-estudiante-info p {
   margin: 0;
-  color: #e6e6e6;
-  font-size: 0.9rem;
+  color: var(--text-heading);
+  font-size: 0.875rem;
 }
 
 .agregar-estudiante-info strong {
-  color: #3b82f6;
+  color: var(--accent-text);
+}
+
+.agregar-estudiante-hint {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--modal-muted);
 }
 
 .agregar-estudiante-actions {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-top: 1rem;
   justify-content: flex-end;
 }
 
 .agregar-estudiante-btn-cancel,
 .agregar-estudiante-btn-submit {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
+  min-height: 44px;
+  padding: 0.625rem 1.25rem;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  transition: background-color 0.18s;
 }
 
 .agregar-estudiante-btn-cancel {
-  background: #404040;
-  color: white;
+  background: var(--bg-card);
+  color: var(--text-heading);
+  border: 1px solid var(--border-color);
 }
 
 .agregar-estudiante-btn-cancel:hover {
-  background: #505050;
+  background: var(--bg-hover);
 }
 
 .agregar-estudiante-btn-submit {
-  background: #3b82f6;
-  color: white;
+  background: var(--accent-solid);
+  color: #ffffff;
+  border: 1px solid transparent;
 }
 
 .agregar-estudiante-btn-submit:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--accent-solid-hover);
 }
 
 .agregar-estudiante-btn-submit:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-
-
+@media (max-width: 480px) {
+  .agregar-estudiante-actions button {
+    flex: 1;
+  }
+}

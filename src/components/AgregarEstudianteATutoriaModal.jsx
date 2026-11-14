@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast } from './ui/Feedback'
 import { tutoriaService } from '../services/apiService'
 import './AgregarEstudianteModal.css'
+import Icon from './ui/Icon'
 
 const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
   const { estudiantes, horarios } = useData()
+  const toast = useToast()
   const [selectedEstudianteId, setSelectedEstudianteId] = useState('')
   const [loading, setLoading] = useState(false)
   const [estudiantesTutoria, setEstudiantesTutoria] = useState([])
@@ -62,8 +65,9 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
   const isFull = available <= 0
 
   // Filtrar estudiantes que ya están en la tutoría
+  // Solo cuentas activas (asignar una desactivada → 400 en el servidor)
   const estudiantesDisponibles = estudiantes.filter(est => {
-    return !estudiantesTutoria.some(estTut => {
+    return est.activo !== false && !estudiantesTutoria.some(estTut => {
       const estTutId = getProp(estTut, 'idUsuario', 'IdUsuario', 'id', 'Id')
       return estTutId && estTutId.toString() === est.id.toString()
     })
@@ -73,17 +77,17 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
     e.preventDefault()
 
     if (isFull) {
-      alert('Esta tutoría ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
+      toast.error('Esta tutoría ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
       return
     }
 
     if (!selectedEstudianteId) {
-      alert('Por favor selecciona un estudiante')
+      toast.error('Por favor selecciona un estudiante')
       return
     }
 
     if (!tutoriaId) {
-      alert('Error: No se pudo obtener el ID de la tutoría')
+      toast.error('Error: No se pudo obtener el ID de la tutoría')
       return
     }
 
@@ -99,7 +103,7 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
       }
       onClose()
     } catch (error) {
-      alert(`Error: ${error.message || 'No se pudo agregar el estudiante a la tutoría'}`)
+      toast.error(`Error: ${error.message || 'No se pudo agregar el estudiante a la tutoría'}`)
     } finally {
       setLoading(false)
     }
@@ -107,22 +111,23 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
 
   return (
     <div className="agregar-estudiante-overlay" onClick={onClose}>
-      <div className="agregar-estudiante-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="agregar-estudiante-modal" role="dialog" aria-modal="true" aria-labelledby="ae-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="agregar-estudiante-header">
-          <h2>Agregar Estudiante a Tutoría</h2>
-          <button className="agregar-estudiante-close" onClick={onClose}>✕</button>
+          <h2 id="ae-modal-title">Agregar Estudiante a Tutoría</h2>
+          <button type="button" className="agregar-estudiante-close" onClick={onClose} aria-label="Cerrar"><Icon name="close" size={20} /></button>
         </div>
 
         {isFull && (
           <div className="agregar-estudiante-warning">
-            ⚠️ Esta tutoría ya alcanzó su cupo máximo ({cuposOcupados}/{cuposDisponibles} ocupados)
+            <Icon name="alert" size={18} className="icon--inline" />Esta tutoría ya alcanzó su cupo máximo ({cuposOcupados}/{cuposDisponibles} ocupados)
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="agregar-estudiante-form">
           <div className="agregar-estudiante-form-group">
-            <label>Estudiante *</label>
+            <label htmlFor="ae-estudiante">Estudiante *</label>
             <select
+              id="ae-estudiante"
               value={selectedEstudianteId}
               onChange={(e) => setSelectedEstudianteId(e.target.value)}
               required
@@ -140,7 +145,7 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
 
           <div className="agregar-estudiante-info">
             <p>Cupos disponibles: <strong>{available}/{cuposDisponibles}</strong></p>
-            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#a0a0a0' }}>
+            <p className="agregar-estudiante-hint">
               Estudiantes ya agendados: {cuposOcupados}
             </p>
           </div>

@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
+import { grupoEstadoTutoria } from '../lib/estados'
+import { useToast, useConfirm } from './ui/Feedback'
 import { tutoriaService, horarioService } from '../services/apiService'
 import './TutoriaDetailModal.css'
+import Icon from './ui/Icon'
+import { ETIQUETA_SIN_ASIGNAR, tutoriaSinAsignar } from '../lib/usuarios'
 
 const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
   const { deleteTutoria, getEstudianteById, getDocenteById, horarios, docentes } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [estudiantesTutoria, setEstudiantesTutoria] = useState([])
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(false)
   const [docenteId, setDocenteId] = useState(null)
@@ -240,7 +247,7 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
   const cuposRestantes = cuposDisponibles - cuposOcupados
 
   const handleDelete = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta tutoría?')) {
+    if (!(await confirm({ title: 'Eliminar tutoría', message: '¿Seguro que deseas eliminar esta tutoría? Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true }))) {
       return
     }
 
@@ -253,7 +260,7 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
       onClose()
     } catch (error) {
       console.error('[TutoriaDetailModal] Error eliminando tutoría:', error)
-      alert(error.message || 'Error al eliminar la tutoría. Por favor, inténtalo de nuevo.')
+      toast.error(error.message || 'Error al eliminar la tutoría. Por favor, inténtalo de nuevo.')
     }
   }
 
@@ -266,17 +273,17 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
 
   return (
     <div className="tutoria-modal-overlay" onClick={onClose}>
-      <div className="tutoria-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="tutoria-modal" role="dialog" aria-modal="true" aria-labelledby="td-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="tutoria-modal-header">
           <div className="tutoria-modal-title-section">
             <div className="tutoria-color-indicator"></div>
             <div>
-              <h2 className="tutoria-modal-title">
+              <h2 className="tutoria-modal-title" id="td-modal-title">
                 {idioma} {nivel}
               </h2>
               <p className="tutoria-modal-date">{fechaFormateada}</p>
               <p className="tutoria-modal-capacity">
-                <span style={{ color: '#22c55e' }}>
+                <span className="td-count">
                   {estudiantesInfo.length} estudiante{estudiantesInfo.length !== 1 ? 's' : ''} agendado{estudiantesInfo.length !== 1 ? 's' : ''}
                 </span>
               </p>
@@ -287,44 +294,51 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
               className="tutoria-close-btn" 
               onClick={onClose}
               title="Cerrar"
+              aria-label="Cerrar"
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
         </div>
 
         <div className="tutoria-modal-content">
           <div className="tutoria-detail-item">
-            <span className="tutoria-detail-icon">☰</span>
+            <Icon name="text" size={18} className="tutoria-detail-icon" />
             <span>Horario</span>
           </div>
           {horaInicioFormateada && horaFinFormateada && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">🕐</span>
+              <Icon name="clock" size={18} className="tutoria-detail-icon" />
               <span>{horaInicioFormateada} - {horaFinFormateada}</span>
             </div>
           )}
           {modalidad && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">📍</span>
+              <Icon name="mapPin" size={18} className="tutoria-detail-icon" />
               <span>{modalidad}</span>
             </div>
           )}
           {espacio && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">🏢</span>
+              <Icon name="building" size={18} className="tutoria-detail-icon" />
               <span>{espacio}</span>
             </div>
           )}
           {cuposRestantes >= 0 && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">👥</span>
+              <Icon name="users" size={18} className="tutoria-detail-icon" />
               <span>{cuposRestantes} cupo{cuposRestantes !== 1 ? 's' : ''} disponible{cuposRestantes !== 1 ? 's' : ''}</span>
             </div>
           )}
-          {(docente || usuarioNombre || tutoria.docenteNombre) && (
+          {tutoriaSinAsignar(tutoria) && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">👩‍🏫</span>
+              <Icon name="teacher" size={18} className="tutoria-detail-icon" />
+              <span className="tutoria-sin-asignar">{ETIQUETA_SIN_ASIGNAR}</span>
+            </div>
+          )}
+          {!tutoriaSinAsignar(tutoria) && (docente || usuarioNombre || tutoria.docenteNombre) && (
+            <div className="tutoria-detail-item">
+              <Icon name="teacher" size={18} className="tutoria-detail-icon" />
               <div className="tutoria-docente-info">
                 <div className="tutoria-docente-name">
                   {docente 
@@ -372,8 +386,16 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
           
           {tutoria.estado && (
             <div className="tutoria-detail-item">
-              <span className="tutoria-detail-icon">🔒</span>
+              <Icon name="lock" size={18} className="tutoria-detail-icon" />
               <span>{tutoria.estado}</span>
+            </div>
+          )}
+
+          {tutoria.id && grupoEstadoTutoria(tutoria.estado) === 'pendiente' && (
+            <div className="tutoria-detail-finalizar">
+              <Link className="btn btn--primary btn--block" to={`/tutorias/${tutoria.id}/finalizar`}>
+                Calificar y finalizar
+              </Link>
             </div>
           )}
         </div>

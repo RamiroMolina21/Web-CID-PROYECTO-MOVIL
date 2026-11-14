@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast } from './ui/Feedback'
 import './AgregarEstudianteModal.css'
+import Icon from './ui/Icon'
 
 const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
   const { estudiantes, tutorias, addTutoria, tutoriaService, docentes } = useData()
+  const toast = useToast()
   const [selectedEstudianteId, setSelectedEstudianteId] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -64,12 +67,12 @@ const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
     e.preventDefault()
 
     if (isFull) {
-      alert('Este horario ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
+      toast.error('Este horario ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
       return
     }
 
     if (!selectedEstudianteId) {
-      alert('Por favor selecciona un estudiante')
+      toast.error('Por favor selecciona un estudiante')
       return
     }
 
@@ -108,7 +111,7 @@ const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
 
       if (!finalDocenteId) {
         console.error('No se pudo determinar el docente. Horario:', horario)
-        alert('Error: No se pudo determinar el docente para este horario. Por favor verifica que el horario tenga un docente asignado.')
+        toast.error('Error: No se pudo determinar el docente para este horario. Por favor verifica que el horario tenga un docente asignado.')
         setLoading(false)
         return
       }
@@ -143,7 +146,7 @@ const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
       }
       onClose()
     } catch (error) {
-      alert(`Error: ${error.message || 'No se pudo agregar el estudiante a la tutoría'}`)
+      toast.error(`Error: ${error.message || 'No se pudo agregar el estudiante a la tutoría'}`)
     } finally {
       setLoading(false)
     }
@@ -151,22 +154,23 @@ const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
 
   return (
     <div className="agregar-estudiante-overlay" onClick={onClose}>
-      <div className="agregar-estudiante-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="agregar-estudiante-modal" role="dialog" aria-modal="true" aria-labelledby="ae-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="agregar-estudiante-header">
-          <h2>Agregar Estudiante</h2>
-          <button className="agregar-estudiante-close" onClick={onClose}>✕</button>
+          <h2 id="ae-modal-title">Agregar Estudiante</h2>
+          <button type="button" className="agregar-estudiante-close" onClick={onClose} aria-label="Cerrar"><Icon name="close" size={20} /></button>
         </div>
 
         {isFull && (
           <div className="agregar-estudiante-warning">
-            ⚠️ Este horario ya alcanzó su cupo máximo ({capacity}/{capacity} ocupados)
+            <Icon name="alert" size={18} className="icon--inline" />Este horario ya alcanzó su cupo máximo ({capacity}/{capacity} ocupados)
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="agregar-estudiante-form">
           <div className="agregar-estudiante-form-group">
-            <label>Estudiante *</label>
+            <label htmlFor="ae-estudiante">Estudiante *</label>
             <select
+              id="ae-estudiante"
               value={selectedEstudianteId}
               onChange={(e) => setSelectedEstudianteId(e.target.value)}
               required
@@ -174,7 +178,7 @@ const AgregarEstudianteModal = ({ horario, onClose, onSuccess }) => {
               className="agregar-estudiante-select"
             >
               <option value="">Selecciona un estudiante</option>
-              {estudiantes.map((estudiante) => (
+              {estudiantes.filter((e) => e.activo !== false).map((estudiante) => (
                 <option key={estudiante.id} value={estudiante.id}>
                   {estudiante.nombre} {estudiante.email ? `(${estudiante.email})` : ''}
                 </option>

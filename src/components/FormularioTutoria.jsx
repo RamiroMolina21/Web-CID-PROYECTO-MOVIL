@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
+import { useToast } from './ui/Feedback'
 import './FormularioTutoria.css'
+import Icon from './ui/Icon'
 
 const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
   const { docentes, tutorias, horarios, addTutoria, updateTutoria } = useData()
+  const toast = useToast()
   const isEditing = !!tutoria
   const hasDocentes = docentes && docentes.length > 0
   
@@ -69,19 +72,19 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!hasDocentes) {
-      alert('No hay docentes/tutores registrados. Por favor agrega uno antes de agendar la tutoría.')
+      toast.error('No hay docentes/tutores registrados. Por favor agrega uno antes de agendar la tutoría.')
       return
     }
 
     if (!formData.docenteId) {
-      alert('Por favor selecciona un docente/tutor')
+      toast.error('Por favor selecciona un docente/tutor')
       return
     }
 
     // Obtener el ID del horario correcto (puede ser el seleccionado por fecha si es recurrente)
     const targetHorarioId = horarioSeleccionadoId || horario?.id || tutoria?.horarioId || null
     if (!targetHorarioId) {
-      alert('Por favor selecciona un horario para agendar la tutoría')
+      toast.error('Por favor selecciona un horario para agendar la tutoría')
       return
     }
 
@@ -92,7 +95,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       // count existing tutorias for this horario, excluding current tutoria if editing
       const existingCount = tutorias.filter(t => t.horarioId === targetHorarioId && t.id !== (tutoria?.id || null)).length
       if (capacity !== null && capacity !== undefined && existingCount >= capacity) {
-        alert('Este horario ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
+        toast.error('Este horario ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
         return
       }
     }
@@ -126,7 +129,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           })
           
           if (fechasParaAgendar.length === 0) {
-            alert('No hay fechas disponibles para agendar. Todas las fechas ya están ocupadas.')
+            toast.error('No hay fechas disponibles para agendar. Todas las fechas ya están ocupadas.')
             return
           }
           
@@ -172,18 +175,18 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           }
           
           if (tutoriasCreadas.length === 0) {
-            alert('No se pudo agendar ninguna tutoría. Por favor verifica las fechas disponibles.')
+            toast.error('No se pudo agendar ninguna tutoría. Por favor verifica las fechas disponibles.')
             return
           }
           
-          alert(`Se han agendado ${tutoriasCreadas.length} tutoría(s) exitosamente en las fechas disponibles.`)
+          toast.success(`Se han agendado ${tutoriasCreadas.length} tutoría(s) exitosamente en las fechas disponibles.`)
           onClose() // Cerrar el modal después de agendar todas las tutorías
           return
         } else {
           // Usar el horario seleccionado por fecha si es recurrente
           const targetHorarioId = horarioSeleccionadoId || horario?.id || tutoria?.horarioId
         if (!targetHorarioId) {
-          alert('Por favor selecciona un horario para agendar la tutoría')
+          toast.error('Por favor selecciona un horario para agendar la tutoría')
           return
         }
         
@@ -202,7 +205,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       }
       onClose()
     } catch (error) {
-      alert(`Error: ${error.message || 'No se pudo agendar la tutoría'}`)
+      toast.error(`Error: ${error.message || 'No se pudo agendar la tutoría'}`)
     }
   }
 
@@ -228,7 +231,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
             className="form-select"
           >
             <option value="">{hasDocentes ? 'Selecciona un docente/tutor' : 'No hay docentes disponibles'}</option>
-            {docentes.map((docente) => (
+            {docentes.filter((d) => d.activo !== false || String(d.id) === String(formData.docenteId)).map((docente) => (
               <option key={docente.id} value={docente.id}>
                 {docente.nombre || (docente.nombres && docente.apellidos ? `${docente.nombres} ${docente.apellidos}`.trim() : docente.nombres || '')} {docente.rol ? `(${docente.rol})` : ''}
               </option>
@@ -432,7 +435,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         </div>
 
         <button type="submit" className="btn-agendar" disabled={!hasDocentes}>
-          {isEditing ? '💾 Guardar Cambios' : (hasDocentes ? '📅 Agendar Tutoría' : 'Agregar docente/tutor primero')}
+          {isEditing ? <><Icon name="save" size={18} className="icon--inline" />Guardar Cambios</> : (hasDocentes ? <><Icon name="calendarPlus" size={18} className="icon--inline" />Agendar Tutoría</> : 'Agregar docente/tutor primero')}
         </button>
       </form>
     </div>

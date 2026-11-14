@@ -41,25 +41,34 @@
   margin-bottom: 2.5rem;
 }
 
-.login-logo {
+.login-brand {
   display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
+  margin: 0 auto 0.75rem;
 }
 
-.logo-image {
-  width: 120px;
-  height: auto;
-  object-fit: contain;
-  max-height: 120px;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-}
-
-.login-header h1 {
+.login-brand .brand__name {
   font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-heading);
-  margin: 0 0 0.5rem 0;
+}
+
+.login-institution {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  text-align: left;
+}
+
+.institution-logo {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+/* El logo institucional es gris/verde sobre transparente: en oscuro se apoya en una placa clara */
+[data-theme='dark'] .institution-logo {
+  background: #ffffff;
+  padding: 4px;
 }
 
 .login-header p {
@@ -180,11 +189,75 @@
 
 .login-footer {
   margin-top: 2rem;
-  text-align: center;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .login-footer p {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
   margin: 0;
+}
+
+.info-message {
+  background-color: var(--accent-hover-bg);
+  color: var(--text-heading);
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--accent-light);
+}
+
+.field-error {
+  color: var(--error-text);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.form-group input[aria-invalid='true'] {
+  border-color: var(--error-text);
+}
+
+.password-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  right: 0.25rem;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.login-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 4.5rem 1rem 1.5rem;
+    align-items: flex-start;
+  }
+
+  .login-card {
+    padding: 2rem 1.25rem;
+    border-radius: 16px;
+  }
+
+  .login-header {
+    margin-bottom: 1.75rem;
+  }
+
+  .login-brand .brand__name {
+    font-size: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-button:hover:not(:disabled) {
+    transform: none;
+  }
 }

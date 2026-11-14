@@ -41,7 +41,7 @@
 .horario-color-indicator {
   width: 12px;
   height: 12px;
-  background: #6366f1;
+  background: var(--accent);
   border-radius: 3px;
   margin-top: 0.5rem;
   flex-shrink: 0;
@@ -99,7 +99,7 @@
 }
 
 .horario-close-btn:hover {
-  background: #3b82f6;
+  background: var(--modal-hover);
   color: var(--modal-text);
 }
 
@@ -156,7 +156,7 @@
 }
 
 .horario-add-student-btn {
-  background: #3b82f6;
+  background: var(--accent-solid);
   color: var(--modal-text);
   border: none;
   border-radius: 6px;
@@ -168,7 +168,7 @@
 }
 
 .horario-add-student-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--accent-solid-hover);
 }
 
 .horario-add-student-btn:disabled {
@@ -222,13 +222,13 @@
 
 .student-time {
   font-size: 0.85rem;
-  color: #c4c4c4;
+  color: var(--modal-muted);
 }
 
 .student-delete-btn {
   background: transparent;
   border: none;
-  color: #ef4444;
+  color: var(--danger-strong);
   cursor: pointer;
   font-size: 1rem;
   padding: 0.25rem 0.5rem;
@@ -250,7 +250,7 @@
 }
 
 .no-students {
-  color: var(--text-muted);
+  color: var(--modal-muted);
   font-size: 0.9rem;
   margin: 0;
 }
@@ -258,11 +258,11 @@
 .horario-student-available {
   opacity: 0.6;
   border-style: dashed;
-  border-color: #404040;
+  border-color: var(--modal-border);
 }
 
 .horario-student-available .student-name {
-  color: var(--text-muted);
+  color: var(--modal-muted);
   font-style: italic;
 }
 
@@ -275,3 +275,54 @@
 
 
 
+
+.horario-detail-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ---------- Tokens (claro/oscuro, contraste ≥4.5:1) ---------- */
+.horario-close-btn:hover {
+  background: var(--modal-hover);
+  color: var(--modal-text);
+}
+
+.horario-add-student-btn {
+  background: var(--accent-solid);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.horario-add-student-btn:hover:not(:disabled) {
+  background: var(--accent-solid-hover);
+}
+
+.student-time {
+  color: var(--modal-muted);
+}
+
+.student-delete-btn {
+  color: var(--danger-strong);
+}
+
+.student-delete-btn:hover:not(:disabled) {
+  background: var(--error-bg);
+}
+
+.hd-capacity { font-weight: 600; }
+.hd-capacity--libre { color: var(--success-text); }
+.hd-capacity--pocos { color: var(--warning-text); }
+.hd-capacity--lleno { color: var(--danger-strong); }
+
+@media (max-width: 1023px) {
+  .horario-action-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .horario-add-student-btn,
+  .student-delete-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

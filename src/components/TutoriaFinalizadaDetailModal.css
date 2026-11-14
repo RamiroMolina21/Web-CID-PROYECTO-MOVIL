@@ -41,7 +41,7 @@
 .tutoria-finalizada-color-indicator {
   width: 12px;
   height: 12px;
-  background: #22c55e;
+  background: var(--success-dot);
   border-radius: 3px;
   margin-top: 0.5rem;
   flex-shrink: 0;
@@ -74,7 +74,7 @@
 }
 
 .tutoria-finalizada-export-btn {
-  background: #3b82f6;
+  background: var(--accent-solid);
   color: var(--modal-text);
   border: none;
   border-radius: 6px;
@@ -89,7 +89,7 @@
 }
 
 .tutoria-finalizada-export-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--accent-solid-hover);
 }
 
 .tutoria-finalizada-export-btn:disabled {
@@ -218,9 +218,173 @@
 }
 
 .no-students {
-  color: var(--text-muted);
+  color: var(--modal-muted);
   font-size: 0.9rem;
   margin: 0;
 }
 
 
+
+.tutoria-finalizada-detail-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* =========================================================================
+   Tokens (claro/oscuro). Antes: colores fijos en línea pensados solo para claro.
+   Pares texto/fondo con contraste ≥4.5:1 en ambos temas.
+   ========================================================================= */
+.tutoria-finalizada-color-indicator {
+  background: var(--success-dot);
+}
+
+.tf-count {
+  color: var(--success-text);
+}
+
+.tutoria-finalizada-export-btn {
+  min-height: 40px;
+  background: var(--accent-solid);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.tutoria-finalizada-export-btn:hover:not(:disabled) {
+  background: var(--accent-solid-hover);
+}
+
+.tf-section {
+  margin-top: 1rem;
+}
+
+.tf-chip {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--neutral-bg);
+  color: var(--neutral-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.tf-survey__head .tf-chip {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* Retroalimentación del profesor */
+.tf-retro {
+  margin-bottom: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--modal-border);
+  border-radius: var(--radius-sm);
+  background: var(--modal-subtle-bg);
+}
+
+.tf-retro__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tf-retro__author {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--modal-text);
+}
+
+.tf-retro__score {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tf-pill {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tf-pill--alta { background: var(--success-bg); color: var(--success-text); }
+.tf-pill--media { background: var(--warning-bg); color: var(--warning-text); }
+.tf-pill--baja { background: var(--error-bg); color: var(--danger-strong); }
+
+.tf-quote {
+  margin: 0 0 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--modal-text);
+}
+
+.tf-quote--empty {
+  color: var(--modal-muted);
+}
+
+.tf-quote--boxed {
+  margin: 0.375rem 0 0;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  background: var(--modal-subtle-bg);
+  border: 1px solid var(--modal-border);
+}
+
+.tf-meta {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--modal-muted);
+}
+
+/* Encuestas */
+.tf-average {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+}
+
+.tf-average__value {
+  font-weight: 700;
+  color: var(--success-text);
+}
+
+.tf-average .tf-meta {
+  margin-top: 0;
+  color: var(--success-text);
+}
+
+.tf-survey__main {
+  width: 100%;
+}
+
+.tf-survey__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+@media (max-width: 1023px) {
+  .tutoria-finalizada-close-btn,
+  .tutoria-finalizada-export-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Tutoría sin asignar (usuario eliminado) */
+.tutoria-sin-asignar {
+  color: var(--warning-text);
+  font-weight: 600;
+}

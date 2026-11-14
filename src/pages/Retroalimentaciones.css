@@ -362,3 +362,9 @@
 }
 
 
+
+/* Iconos SVG (antes emojis) */
+.empty-state .empty-icon {
+  margin: 0 auto 1rem;
+  color: var(--text-secondary);
+}

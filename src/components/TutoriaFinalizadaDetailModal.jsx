@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import './TutoriaFinalizadaDetailModal.css'
 import { useData } from '../context/DataContext'
+import { useToast, useConfirm } from './ui/Feedback'
 import { notificacionService, tutoriaService, horarioService, encuestaService, retroalimentacionService } from '../services/apiService'
+import Icon from './ui/Icon'
+import { ETIQUETA_SIN_ASIGNAR, nombreAutor, tutoriaSinAsignar } from '../lib/usuarios'
+import Stars from './ui/Stars'
 
 const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   const { getDocenteById, getEstudianteById, estudiantes, docentes, horarios } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [estudiantesTutoria, setEstudiantesTutoria] = useState([])
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(false)
   const [exportando, setExportando] = useState(false)
@@ -224,11 +230,11 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
   const handleExportar = async () => {
     if (!tutoriaId) {
       console.error('TutoriaId faltante para exportar:', { tutoriaId, tutoria })
-      alert(`No se pudo obtener la información necesaria para descargar el reporte.\n\nTutoriaId: ${tutoriaId || 'No disponible'}\n\nPor favor, verifica que la tutoría tenga un ID válido.`)
+      toast.error(`No se pudo obtener la información necesaria para descargar el reporte.\n\nTutoriaId: ${tutoriaId || 'No disponible'}\n\nPor favor, verifica que la tutoría tenga un ID válido.`)
       return
     }
 
-    if (!window.confirm('¿Deseas descargar el reporte en Excel?')) {
+    if (!(await confirm({ title: 'Descargar reporte', message: '¿Deseas descargar el reporte de esta tutoría en Excel?', confirmLabel: 'Descargar' }))) {
       return
     }
 
@@ -241,7 +247,7 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
       console.log('Reporte descargado exitosamente')
     } catch (error) {
       console.error('Error descargando reporte:', error)
-      alert(error.message || 'Error al descargar el reporte. Por favor, inténtalo de nuevo.')
+      toast.error(error.message || 'Error al descargar el reporte. Por favor, inténtalo de nuevo.')
     } finally {
       setExportando(false)
     }
@@ -249,17 +255,17 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
 
   return (
     <div className="tutoria-finalizada-modal-overlay" onClick={onClose}>
-      <div className="tutoria-finalizada-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="tutoria-finalizada-modal" role="dialog" aria-modal="true" aria-labelledby="tf-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="tutoria-finalizada-modal-header">
           <div className="tutoria-finalizada-modal-title-section">
             <div className="tutoria-finalizada-color-indicator"></div>
             <div>
-              <h2 className="tutoria-finalizada-modal-title">
+              <h2 className="tutoria-finalizada-modal-title" id="tf-modal-title">
                 {idioma} {nivel}
               </h2>
               <p className="tutoria-finalizada-modal-date">{fechaFormateada}</p>
               <p className="tutoria-finalizada-modal-capacity">
-                <span style={{ color: '#22c55e' }}>
+                <span className="tf-count">
                   {estudiantesInfo.length} estudiante{estudiantesInfo.length !== 1 ? 's' : ''} agendado{estudiantesInfo.length !== 1 ? 's' : ''}
                 </span>
               </p>
@@ -272,48 +278,55 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
               disabled={exportando}
               title="Descargar reporte Excel"
             >
-              {exportando ? '⏳' : '📊'} {exportando ? 'Descargando...' : 'Descargar'}
+              {exportando ? <span className="spinner" aria-hidden="true"><span /></span> : <Icon name="download" size={18} />} {exportando ? 'Descargando...' : 'Descargar'}
             </button>
             <button 
               className="tutoria-finalizada-close-btn" 
               onClick={onClose}
               title="Cerrar"
+              aria-label="Cerrar"
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
         </div>
 
         <div className="tutoria-finalizada-modal-content">
           <div className="tutoria-finalizada-detail-item">
-            <span className="tutoria-finalizada-detail-icon">☰</span>
+            <Icon name="text" size={18} className="tutoria-finalizada-detail-icon" />
             <span>Horario</span>
           </div>
           {horaInicioFormateada && horaFinFormateada && (
             <div className="tutoria-finalizada-detail-item">
-              <span className="tutoria-finalizada-detail-icon">🕐</span>
+              <Icon name="clock" size={18} className="tutoria-finalizada-detail-icon" />
               <span>{horaInicioFormateada} - {horaFinFormateada}</span>
             </div>
           )}
           <div className="tutoria-finalizada-detail-item">
-            <span className="tutoria-finalizada-detail-icon">📍</span>
+            <Icon name="mapPin" size={18} className="tutoria-finalizada-detail-icon" />
             <span>{modalidad}</span>
           </div>
           {horarioEspacio && (
             <div className="tutoria-finalizada-detail-item">
-              <span className="tutoria-finalizada-detail-icon">🏢</span>
+              <Icon name="building" size={18} className="tutoria-finalizada-detail-icon" />
               <span>{horarioEspacio}</span>
             </div>
           )}
           {estudiantesInfo.length > 0 && (
             <div className="tutoria-finalizada-detail-item">
-              <span className="tutoria-finalizada-detail-icon">👥</span>
+              <Icon name="users" size={18} className="tutoria-finalizada-detail-icon" />
               <span>{estudiantesInfo.length} cupo{estudiantesInfo.length !== 1 ? 's' : ''} disponible{estudiantesInfo.length !== 1 ? 's' : ''}</span>
             </div>
           )}
-          {(docente || usuarioNombre) && (
+          {tutoriaSinAsignar(tutoria) && (
             <div className="tutoria-finalizada-detail-item">
-              <span className="tutoria-finalizada-detail-icon">👩‍🏫</span>
+              <Icon name="teacher" size={18} className="tutoria-finalizada-detail-icon" />
+              <span className="tutoria-sin-asignar">{ETIQUETA_SIN_ASIGNAR}</span>
+            </div>
+          )}
+          {!tutoriaSinAsignar(tutoria) && (docente || usuarioNombre) && (
+            <div className="tutoria-finalizada-detail-item">
+              <Icon name="teacher" size={18} className="tutoria-finalizada-detail-icon" />
               <div className="tutoria-finalizada-docente-info">
                 <div className="tutoria-finalizada-docente-name">
                   {docente 
@@ -356,15 +369,15 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
           </div>
           
           <div className="tutoria-finalizada-detail-item">
-            <span className="tutoria-finalizada-detail-icon">🔒</span>
+            <Icon name="lock" size={18} className="tutoria-finalizada-detail-icon" />
             <span>Finalizada</span>
           </div>
 
           {/* Sección de Retroalimentación del Profesor */}
-          <div className="tutoria-finalizada-students-section" style={{ marginTop: '16px' }}>
+          <div className="tutoria-finalizada-students-section tf-section">
             <div className="tutoria-finalizada-students-header">
               <h3 className="tutoria-finalizada-students-title">
-                💬 Retroalimentación del profesor
+                <Icon name="message" size={18} className="icon--inline" />Retroalimentación del profesor
               </h3>
             </div>
 
@@ -378,36 +391,21 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
                 const calRedondeada = Math.round(calificacion)
                 const comentario = retro.Comentario ?? retro.comentario ?? ''
                 const fecha = retro.Fecha ?? retro.fecha
-                const nombre = `${retro.UsuarioNombre ?? retro.usuarioNombre ?? ''} ${retro.UsuarioApellidos ?? retro.usuarioApellidos ?? ''}`.trim() || 'Docente'
+                const nombre = nombreAutor(retro)
 
-                // Color de fondo según calificación
-                let calColor = '#f59e0b'
-                if (calificacion >= 4) calColor = '#16a34a'
-                else if (calificacion < 3) calColor = '#dc2626'
+                // Tono según calificación (pares de tokens con contraste ≥4.5:1 en claro y oscuro)
+                const tono = calificacion >= 4 ? 'alta' : calificacion < 3 ? 'baja' : 'media'
 
                 return (
-                  <div key={retro.IdRetroalimentacion ?? retro.idRetroalimentacion} style={{
-                    background: '#f9fafb',
-                    border: '1px solid #e5e7eb',
-                    borderLeft: '4px solid #4472c4',
-                    borderRadius: '8px',
-                    padding: '12px 14px',
-                    marginBottom: '10px',
-                  }}>
+                  <div key={retro.IdRetroalimentacion ?? retro.idRetroalimentacion} className="tf-retro">
                     {/* Encabezado: docente + calificación */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 'bold', color: '#1e3a5f', fontSize: '14px' }}>
-                        👩‍🏫 {nombre}
+                    <div className="tf-retro__head">
+                      <span className="tf-retro__author">
+                        <Icon name="teacher" size={16} className="icon--inline" />{nombre}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '16px', color: '#f59e0b' }}>
-                          {'★'.repeat(calRedondeada)}{'☆'.repeat(5 - calRedondeada)}
-                        </span>
-                        <span style={{
-                          background: calColor, color: 'white',
-                          fontWeight: 'bold', fontSize: '13px',
-                          padding: '2px 8px', borderRadius: '12px',
-                        }}>
+                      <div className="tf-retro__score">
+                        <Stars value={calificacion} size={16} />
+                        <span className={`tf-pill tf-pill--${tono}`}>
                           {Number(calificacion).toFixed(1)}
                         </span>
                       </div>
@@ -415,21 +413,18 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
 
                     {/* Comentario */}
                     {comentario ? (
-                      <p style={{
-                        margin: '0 0 6px', fontSize: '13px', color: '#374151',
-                        lineHeight: '1.5', fontStyle: 'italic',
-                      }}>
+                      <p className="tf-quote">
                         "{comentario}"
                       </p>
                     ) : (
-                      <p style={{ margin: '0 0 6px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>
+                      <p className="tf-quote tf-quote--empty">
                         Sin comentario
                       </p>
                     )}
 
                     {/* Fecha */}
                     {fecha && (
-                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                      <div className="tf-meta">
                         {new Date(fecha).toLocaleDateString('es-ES', {
                           day: '2-digit', month: 'short', year: 'numeric',
                           hour: '2-digit', minute: '2-digit',
@@ -443,16 +438,12 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
           </div>
 
           {/* Sección de Encuestas de Satisfacción */}
-          <div className="tutoria-finalizada-students-section" style={{ marginTop: '16px' }}>
+          <div className="tutoria-finalizada-students-section tf-section">
             <div className="tutoria-finalizada-students-header">
               <h3 className="tutoria-finalizada-students-title">
-                📋 Encuestas de satisfacción
+                <Icon name="clipboard" size={18} className="icon--inline" />Encuestas de satisfacción
                 {encuestas.length > 0 && (
-                  <span style={{
-                    marginLeft: '8px', fontSize: '12px', fontWeight: 'normal',
-                    color: '#6b7280', background: '#f3f4f6',
-                    padding: '2px 8px', borderRadius: '12px',
-                  }}>
+                  <span className="tf-chip">
                     {encuestas.filter(e => e.tokenUsado).length}/{encuestas.length} respondidas
                   </span>
                 )}
@@ -470,18 +461,12 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
                   const respondidas = encuestas.filter(e => e.tokenUsado)
                   const promedio = respondidas.reduce((s, e) => s + e.calificacion, 0) / respondidas.length
                   return (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: '10px',
-                      background: '#f0fdf4', border: '1px solid #bbf7d0',
-                      borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
-                    }}>
-                      <span style={{ fontSize: '20px', color: '#f59e0b' }}>
-                        {'★'.repeat(Math.round(promedio))}{'☆'.repeat(5 - Math.round(promedio))}
-                      </span>
-                      <span style={{ fontWeight: 'bold', color: '#15803d' }}>
+                    <div className="tf-average">
+                      <Stars value={promedio} size={20} />
+                      <span className="tf-average__value">
                         Promedio: {promedio.toFixed(1)}/5
                       </span>
-                      <span style={{ color: '#6b7280', fontSize: '13px' }}>
+                      <span className="tf-meta">
                         ({respondidas.length} respuesta{respondidas.length !== 1 ? 's' : ''})
                       </span>
                     </div>
@@ -491,25 +476,16 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
                 {/* Lista de encuestas */}
                 <ul className="tutoria-finalizada-students-list">
                   {encuestas.map((enc) => (
-                    <li key={enc.idEncuesta} className="tutoria-finalizada-student-item" style={{
-                      borderLeft: enc.tokenUsado ? '3px solid #22c55e' : '3px solid #d1d5db',
-                    }}>
-                      <div className="student-main" style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <li key={enc.idEncuesta} className="tutoria-finalizada-student-item tf-survey">
+                      <div className="student-main tf-survey__main">
+                        <div className="tf-survey__head">
                           <div className="student-name">
                             {enc.estudianteNombre || 'Estudiante'}
                           </div>
                           {enc.tokenUsado ? (
-                            <span style={{
-                              fontSize: '18px', color: '#f59e0b', letterSpacing: '2px', flexShrink: 0,
-                            }} title={`${enc.calificacion}/5`}>
-                              {'★'.repeat(enc.calificacion)}{'☆'.repeat(5 - enc.calificacion)}
-                            </span>
+                            <Stars value={enc.calificacion} size={18} />
                           ) : (
-                            <span style={{
-                              fontSize: '12px', color: '#9ca3af',
-                              background: '#f3f4f6', padding: '2px 8px', borderRadius: '10px',
-                            }}>
+                            <span className="tf-chip">
                               Pendiente
                             </span>
                           )}
@@ -520,16 +496,12 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
                           </div>
                         )}
                         {enc.tokenUsado && enc.comentario && (
-                          <div style={{
-                            marginTop: '6px', fontSize: '13px', color: '#374151',
-                            background: '#f9fafb', borderRadius: '6px',
-                            padding: '6px 10px', fontStyle: 'italic',
-                          }}>
+                          <div className="tf-quote tf-quote--boxed">
                             "{enc.comentario}"
                           </div>
                         )}
                         {enc.tokenUsado && enc.fechaRespuesta && (
-                          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                          <div className="tf-meta">
                             Respondida el {new Date(enc.fechaRespuesta).toLocaleDateString('es-ES', {
                               day: '2-digit', month: 'short', year: 'numeric'
                             })}

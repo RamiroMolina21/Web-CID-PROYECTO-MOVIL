@@ -17,7 +17,7 @@
 }
 
 .formulario-tutoria-header {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: var(--accent-solid);
   color: white;
   padding: 1.5rem;
   border-radius: 12px 12px 0 0;
@@ -87,7 +87,7 @@
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -112,11 +112,11 @@
 
 /* Asegurar que el placeholder también sea gris */
 .form-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .form-select::placeholder {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* Estilos para select options */
@@ -139,7 +139,7 @@
 }
 
 .btn-agendar {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: var(--accent-solid);
   color: white;
   border: none;
   padding: 1rem 2rem;

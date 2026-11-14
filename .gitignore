@@ -29,3 +29,10 @@ dist-ssr
 
 
 
+
+# E2E (Playwright)
+.env.e2e
+playwright-report
+test-results
+blob-report
+e2e/.auth

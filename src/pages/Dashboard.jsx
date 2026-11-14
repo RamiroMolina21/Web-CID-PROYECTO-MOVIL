@@ -1,406 +1,335 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
-import { useTheme } from '../context/ThemeContext'
-import { metricasService, encuestaService } from '../services/apiService'
-import { PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useAuth } from '../context/AuthContext'
+import { ROLES, tieneRol } from '../lib/roles'
+import { useApiQuery } from '../hooks/useApiQuery'
+import { atencionService, encuestaService, retroalimentacionService } from '../services/apiService'
+import { useConfirm, useToast } from '../components/ui/Feedback'
+import { getErrorMessage } from '../lib/apiClient'
+import { PageHeader, Spinner } from '../components/ui/States'
+import Icon from '../components/ui/Icon'
+import { formatDiaLargo, formatFecha, formatHora } from '../lib/fechas'
+import DashPanel from '../features/dashboard/DashPanel'
+import Atencion from '../features/dashboard/Atencion'
+import Agenda from '../features/dashboard/Agenda'
+import Indicadores from '../features/dashboard/Indicadores'
+import Tendencia from '../features/dashboard/Tendencia'
+import Calidad from '../features/dashboard/Calidad'
+import Demanda from '../features/dashboard/Demanda'
+import Carga from '../features/dashboard/Carga'
+import {
+  PERIODOS,
+  calcularAgenda,
+  aplicarAtendidos,
+  calcularAtencion,
+  calcularCalidadSesiones,
+  calcularCarga,
+  calcularKpis,
+  calcularTendencia,
+  clasificarTutorias,
+  formatNum,
+  inicioPeriodo,
+} from '../features/dashboard/metricas'
 import './Dashboard.css'
 
-const Dashboard = () => {
-  const { isDark } = useTheme()
-  const {
-    getTutoriasHoy,
-    getHorariosDisponibles,
-    estudiantes,
-    docentes,
-    tutorias,
-    loading,
-    error
-  } = useData()
-
-  const [metricas, setMetricas] = useState(null)
-  const [loadingMetricas, setLoadingMetricas] = useState(true)
-  const [errorMetricas, setErrorMetricas] = useState(null)
-  const [estadisticasEncuesta, setEstadisticasEncuesta] = useState(null)
-
+/** Reloj de la página: recalcula "en curso", "vencida", "hoy"… cada minuto. */
+const useAhora = (ms = 60_000) => {
+  const [ahora, setAhora] = useState(() => new Date())
   useEffect(() => {
-    loadMetricas()
-    loadEstadisticasEncuesta()
-  }, [])
+    const id = setInterval(() => setAhora(new Date()), ms)
+    return () => clearInterval(id)
+  }, [ms])
+  return ahora
+}
 
-  const loadMetricas = async () => {
+const estadoQuery = (q) => (q.isLoading && q.data === undefined ? 'loading' : q.isError && q.data === undefined ? 'error' : 'ready')
+
+/**
+ * Dashboard de gestión (Administrador y Auxiliar).
+ * Jerarquía: 1) qué requiere atención hoy → 2) indicadores con contexto → 3) tendencia y calidad →
+ * 4) análisis por periodo (demanda y carga). Cada bloque carga, falla y se reintenta por separado.
+ */
+const Dashboard = () => {
+  const { tutorias, horarios, docentes, loading, error, loadErrors = {}, loadData } = useData()
+  const { user } = useAuth()
+  // El Auxiliar no gestiona personal (backend: 403 sobre usuarios no Estudiante): sin ese acceso.
+  const esAdmin = tieneRol(user, [ROLES.ADMIN])
+  const ahora = useAhora()
+  const [periodo, setPeriodo] = useState('365')
+
+  const encuestasQ = useApiQuery(() => encuestaService.getEstadisticas(), [])
+  const retroQ = useApiQuery(() => retroalimentacionService.getAll(), [])
+  const pendientesQ = useApiQuery((signal) => encuestaService.getPendientes(signal), [])
+  // Asuntos atendidos (persistidos en el servidor, compartidos por Admin y Auxiliar). Si falla, el bloque sigue.
+  const atendidosQ = useApiQuery((signal) => atencionService.getAtendidos(signal), [])
+  const toast = useToast()
+  const confirm = useConfirm()
+  const [atendiendo, setAtendiendo] = useState(null)
+
+  // DataContext: esqueleto solo en la primera carga; al actualizar se mantiene el contenido.
+  const cargadoUnaVez = useRef(false)
+  const [actualizado, setActualizado] = useState(null)
+  useEffect(() => {
+    if (!loading) {
+      cargadoUnaVez.current = true
+      setActualizado(new Date())
+    }
+  }, [loading])
+  const primeraCarga = loading && !cargadoUnaVez.current
+  const errorGlobal = error ? { message: error } : null
+  const errorDe = (recurso) => errorGlobal || loadErrors[recurso] || null
+  const estadoDe = (...recursos) => (primeraCarga ? 'loading' : recursos.some((r) => errorDe(r)) ? 'error' : 'ready')
+
+  const refrescar = () => {
+    loadData()
+    encuestasQ.refetch({ silent: encuestasQ.data !== undefined })
+    retroQ.refetch({ silent: retroQ.data !== undefined })
+    pendientesQ.refetch({ silent: pendientesQ.data !== undefined })
+    atendidosQ.refetch({ silent: atendidosQ.data !== undefined })
+  }
+  const refrescando = loading || encuestasQ.isLoading || retroQ.isLoading || atendidosQ.isLoading
+
+  // ---------- Derivados (baratos: unos cientos de filas como máximo) ----------
+  const clasificadas = useMemo(() => clasificarTutorias(tutorias, ahora), [tutorias, ahora])
+  const retro = Array.isArray(retroQ.data) ? retroQ.data : null
+  const encuestas = encuestasQ.data || null
+  const personal = useMemo(
+    () => (docentes || []).filter((d) => /^(docente|tutor)$/i.test((d.rol || '').trim())),
+    [docentes]
+  )
+
+  const tutoriasOk = !errorDe('tutorias')
+  const horariosOk = !errorDe('horarios')
+
+  const pendientes = Array.isArray(pendientesQ.data) ? pendientesQ.data : null
+  const listaAtendidos = Array.isArray(atendidosQ.data) ? atendidosQ.data : []
+  const atencion = useMemo(
+    () =>
+      aplicarAtendidos(
+        calcularAtencion({
+          tutorias: tutoriasOk ? clasificadas : null,
+          horarios: horariosOk ? horarios : null,
+          retroalimentaciones: retro,
+          encuestasPendientes: pendientes,
+          encuestas,
+          ahora,
+        }),
+        listaAtendidos
+      ),
+    [clasificadas, horarios, retro, pendientes, encuestas, ahora, tutoriasOk, horariosOk, listaAtendidos]
+  )
+
+  // Marca TODAS las claves pendientes del asunto como atendidas (POST idempotente).
+  const atender = async (asunto) => {
+    const ok = await confirm({
+      title: '¿Está seguro de que ya le dio atención al asunto?',
+      message: `${asunto.title} (${formatNum(asunto.count)}). Dejará de aparecer como pendiente para todo el equipo hasta que surja un caso nuevo.`,
+      confirmLabel: 'Sí, ya lo atendí',
+      cancelLabel: 'Cancelar',
+    })
+    if (!ok) return
+    setAtendiendo(asunto.tipo)
     try {
-      setLoadingMetricas(true)
-      setErrorMetricas(null)
-      const data = await metricasService.getGenerales()
-      setMetricas(data)
+      const marcados = []
+      for (let i = 0; i < asunto.claves.length; i += 200) {
+        marcados.push(...((await atencionService.marcar(asunto.tipo, asunto.claves.slice(i, i + 200))) || []))
+      }
+      atendidosQ.setData((prev) => {
+        const previos = Array.isArray(prev) ? prev : []
+        const nuevos = marcados.filter((m) => !previos.some((p) => p.tipo === m.tipo && Number(p.clave) === Number(m.clave)))
+        return [...previos, ...nuevos]
+      })
+      toast.success(`«${asunto.title}» quedó marcado como atendido.`)
     } catch (err) {
-      setErrorMetricas(err.message || 'Error al cargar las métricas')
+      toast.error(getErrorMessage(err, 'No se pudo marcar el asunto como atendido.'))
     } finally {
-      setLoadingMetricas(false)
+      setAtendiendo(null)
     }
   }
 
-  const loadEstadisticasEncuesta = async () => {
+  // Deshacer: borra las marcas de las claves actuales del asunto.
+  const deshacer = async (asunto) => {
+    setAtendiendo(asunto.tipo)
     try {
-      const data = await encuestaService.getEstadisticas()
-      setEstadisticasEncuesta(data)
+      await Promise.all(asunto.claves.map((c) => atencionService.deshacer(asunto.tipo, c)))
+      const borradas = new Set(asunto.claves)
+      atendidosQ.setData((prev) => (Array.isArray(prev) ? prev.filter((p) => !(p.tipo === asunto.tipo && borradas.has(Number(p.clave)))) : prev))
+      toast.info(`«${asunto.title}» vuelve a estar pendiente.`)
     } catch (err) {
-      console.error('Error cargando estadísticas de encuestas:', err)
+      toast.error(getErrorMessage(err, 'No se pudo deshacer.'))
+      atendidosQ.refetch({ silent: true })
+    } finally {
+      setAtendiendo(null)
     }
   }
+  const agenda = useMemo(() => calcularAgenda(clasificadas, ahora), [clasificadas, ahora])
+  const kpis = useMemo(() => calcularKpis(clasificadas, ahora), [clasificadas, ahora])
+  const tendencia = useMemo(() => calcularTendencia(clasificadas, ahora), [clasificadas, ahora])
+  const calidadSesiones = useMemo(() => (retro ? calcularCalidadSesiones(retro) : null), [retro])
 
-  const tutoriasHoy = getTutoriasHoy()
-  const horariosDisponibles = getHorariosDisponibles()
+  const desde = inicioPeriodo(periodo, ahora)
+  const enPeriodo = useMemo(() => (desde ? clasificadas.filter((t) => t.inicio >= desde) : clasificadas), [clasificadas, desde?.getTime()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const carga = useMemo(
+    () => calcularCarga({ tutorias: clasificadas, personal, retroalimentaciones: retro, desde }),
+    [clasificadas, personal, retro, desde?.getTime()] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
-  const tutoriasFinalizadas = tutorias.filter(t => {
-    const estado = (t.estado || '').toLowerCase()
-    return estado === 'finalizada' || estado === 'completada' || estado === 'finalizado' || estado === 'completado'
-  })
+  // Fuentes secundarias de la zona de atención que no se pudieron revisar
+  const fallosAtencion = [
+    !tutoriasOk && { nombre: 'tutorías', error: errorDe('tutorias'), onRetry: loadData },
+    !horariosOk && { nombre: 'horarios', error: errorDe('horarios'), onRetry: loadData },
+    retroQ.isError && !retro && { nombre: 'calificaciones de sesiones', error: retroQ.error, onRetry: () => retroQ.refetch() },
+    pendientesQ.isError && !pendientes && { nombre: 'encuestas sin responder', error: pendientesQ.error, onRetry: () => pendientesQ.refetch() },
+    atendidosQ.isError && !atendidosQ.data && { nombre: 'asuntos ya atendidos', error: atendidosQ.error, onRetry: () => atendidosQ.refetch() },
+  ].filter(Boolean)
+  const atencionEstado = primeraCarga ? 'loading' : !tutoriasOk && !horariosOk ? 'error' : 'ready'
 
-  const usuariosRecientes = [
-    ...(Array.isArray(estudiantes) ? [...estudiantes].reverse() : []),
-    ...(Array.isArray(docentes) ? [...docentes].reverse() : [])
-  ]
-
-  const getInitials = (name) =>
-    name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-
-  // Agrupar tutorías finalizadas por mes (últimos 6)
-  const tutoriasPorMes = (() => {
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    const conteo = {}
-    tutoriasFinalizadas.forEach(t => {
-      if (!t.fecha) return
-      const d = new Date(t.fecha + 'T00:00:00')
-      const clave = `${d.getFullYear()}-${d.getMonth()}`
-      conteo[clave] = (conteo[clave] || 0) + 1
-    })
-    const hoy = new Date()
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(hoy.getFullYear(), hoy.getMonth() - (5 - i), 1)
-      const clave = `${d.getFullYear()}-${d.getMonth()}`
-      return { mes: meses[d.getMonth()], cantidad: conteo[clave] || 0 }
-    })
-  })()
-
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <div className="dash-header">
-          <h1>Dashboard</h1>
-          <p>Cargando datos...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="dashboard">
-        <div className="dash-header">
-          <h1>Dashboard</h1>
-          <div className="dash-error-box">
-            <h3>Error al cargar datos</h3>
-            <p>{error}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const promCalif = estadisticasEncuesta?.promedioCalificacion || 0
-  const estrellas = Math.round(promCalif)
-  const tasaResp = estadisticasEncuesta?.tasaRespuesta || 0
-
-  const chartGrid = isDark ? '#334155' : '#f0f0f0'
-  const chartTick = isDark ? '#94a3b8' : '#9ca3af'
-  const tooltipStyle = {
-    borderRadius: '8px',
-    border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-    background: isDark ? '#1e293b' : '#ffffff',
-    color: isDark ? '#f1f5f9' : '#111827',
-    fontSize: '13px',
-  }
+  const periodoLabel = PERIODOS.find((p) => p.id === periodo).label.toLowerCase()
 
   return (
-    <div className="dashboard">
-
-      {/* ── Encabezado ─────────────────────────────────── */}
-      <div className="dash-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Resumen general del sistema de tutorías</p>
-        </div>
-        <button className="dash-refresh-btn" onClick={() => { loadMetricas(); loadEstadisticasEncuesta() }}>
-          🔄 Actualizar
-        </button>
-      </div>
-
-      {/* ── KPIs principales ───────────────────────────── */}
-      <div className="kpi-grid">
-
-        <div className="kpi-card kpi-purple">
-          <div className="kpi-top">
-            <span className="kpi-icon">📅</span>
-            <span className="kpi-label">Tutorías Hoy</span>
-          </div>
-          <div className="kpi-number">{tutoriasHoy.length}</div>
-          <div className="kpi-sub">programadas para hoy</div>
-        </div>
-
-        <div className="kpi-card kpi-blue">
-          <div className="kpi-top">
-            <span className="kpi-icon">📚</span>
-            <span className="kpi-label">Total Tutorías</span>
-          </div>
-          <div className="kpi-number">{tutorias.length}</div>
-          <div className="kpi-sub">{tutoriasFinalizadas.length} finalizadas</div>
-        </div>
-
-        <div className="kpi-card kpi-green">
-          <div className="kpi-top">
-            <span className="kpi-icon">🕐</span>
-            <span className="kpi-label">Horarios Disponibles</span>
-          </div>
-          <div className="kpi-number">{horariosDisponibles.length}</div>
-          <div className="kpi-sub">listos para agendar</div>
-        </div>
-
-        <div className="kpi-card kpi-orange">
-          <div className="kpi-top">
-            <span className="kpi-icon">👥</span>
-            <span className="kpi-label">Usuarios</span>
-          </div>
-          <div className="kpi-number">{estudiantes.length + docentes.length}</div>
-          <div className="kpi-sub">{docentes.length} docentes · {estudiantes.length} estudiantes</div>
-        </div>
-
-        {/* Tarjeta de satisfacción */}
-        <div className="kpi-card kpi-amber">
-          <div className="kpi-top">
-            <span className="kpi-icon">⭐</span>
-            <span className="kpi-label">Satisfacción</span>
-          </div>
-          {estadisticasEncuesta && promCalif > 0 ? (
-            <>
-              <div className="kpi-number kpi-stars-number">{promCalif.toFixed(1)}<span className="kpi-outof">/5</span></div>
-              <div className="kpi-stars">
-                {[1,2,3,4,5].map(i => (
-                  <span key={i} style={{ color: i <= estrellas ? '#f59e0b' : '#d1d5db', fontSize: '16px' }}>★</span>
-                ))}
-              </div>
-              <div className="kpi-progress-wrap">
-                <div className="kpi-progress-bar" style={{ width: `${tasaResp}%` }} />
-              </div>
-              <div className="kpi-sub">
-                {estadisticasEncuesta.totalRespondidas}/{estadisticasEncuesta.totalEnviadas} respondidas ({tasaResp}%)
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="kpi-number" style={{ color: '#9ca3af' }}>—</div>
-              <div className="kpi-sub">sin encuestas respondidas</div>
-            </>
-          )}
-        </div>
-
-      </div>
-
-      {/* ── Gráfica mensual + Usuarios recientes ───────── */}
-      <div className="dash-mid-grid">
-
-        <div className="dash-card">
-          <div className="dash-card-header">
-            <h3>Tutorías Finalizadas</h3>
-            <span className="dash-card-badge">{tutoriasFinalizadas.length} en total</span>
-          </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={tutoriasPorMes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradTutorias" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#8b5cf6" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
-              <XAxis dataKey="mes" tick={{ fontSize: 12, fill: chartTick }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: chartTick }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(val) => [`${val} tutoría${val !== 1 ? 's' : ''}`, 'Finalizadas']}
-              />
-              <Area
-                type="monotone"
-                dataKey="cantidad"
-                stroke="#8b5cf6"
-                strokeWidth={2.5}
-                fill="url(#gradTutorias)"
-                dot={{ r: 4, fill: '#8b5cf6', strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: '#6366f1' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-          <p className="dash-card-footer">Últimos 6 meses</p>
-        </div>
-
-        <div className="dash-card">
-          <div className="dash-card-header">
-            <h3>Usuarios Recientes</h3>
-          </div>
-          <div className="users-list">
-            {usuariosRecientes.length > 0 ? usuariosRecientes.map((u) => (
-              <div key={u.id} className="user-row">
-                <div className="user-avatar">{getInitials(u.nombre)}</div>
-                <div className="user-info">
-                  <span className="user-name">{u.nombre}</span>
-                  <span className="user-email">{u.email || u.correo || '—'}</span>
-                </div>
-                <span className="user-rol-badge">{u.rol || 'Usuario'}</span>
-              </div>
-            )) : (
-              <p className="empty-msg">No hay usuarios recientes</p>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── Métricas detalladas ─────────────────────────── */}
-      <div className="dash-card dash-metrics-card">
-        <div className="dash-card-header">
-          <h3>Métricas Detalladas</h3>
-          <button className="dash-sm-btn" onClick={loadMetricas} disabled={loadingMetricas}>
-            {loadingMetricas ? '⏳ Cargando...' : '🔄 Actualizar'}
-          </button>
-        </div>
-
-        {loadingMetricas ? (
-          <p className="empty-msg">Cargando métricas...</p>
-        ) : errorMetricas ? (
-          <div className="dash-error-inline">
-            <p>{errorMetricas}</p>
-            <button className="dash-sm-btn" onClick={loadMetricas}>Reintentar</button>
-          </div>
-        ) : metricas ? (
+    <div className="dash">
+      <PageHeader
+        title="Dashboard"
+        subtitle={
           <>
-            {/* Resumen numérico en fila */}
-            <div className="metrics-strip">
-              <div className="mstrip-item">
-                <span className="mstrip-val">{metricas.totalTutorias || 0}</span>
-                <span className="mstrip-label">Total Tutorías</span>
-              </div>
-              <div className="mstrip-divider" />
-              <div className="mstrip-item">
-                <span className="mstrip-val green">{metricas.tutoriasCompletadas || 0}</span>
-                <span className="mstrip-label">Completadas</span>
-              </div>
-              <div className="mstrip-divider" />
-              <div className="mstrip-item">
-                <span className="mstrip-val purple">{metricas.tutoriasProgramadas || 0}</span>
-                <span className="mstrip-label">Programadas</span>
-              </div>
-              <div className="mstrip-divider" />
-              <div className="mstrip-item">
-                <span className="mstrip-val red">{metricas.tutoriasCanceladas || 0}</span>
-                <span className="mstrip-label">Canceladas</span>
-              </div>
-              <div className="mstrip-divider" />
-              <div className="mstrip-item">
-                <span className="mstrip-val">{metricas.totalUsuarios || 0}</span>
-                <span className="mstrip-label">Usuarios</span>
-              </div>
-              <div className="mstrip-divider" />
-              <div className="mstrip-item">
-                <span className="mstrip-val yellow">
-                  {metricas.promedioCalificacion ? metricas.promedioCalificacion.toFixed(1) : '—'}
-                </span>
-                <span className="mstrip-label">Calif. Promedio</span>
-              </div>
-            </div>
-
-            {/* Gráficas */}
-            <div className="charts-row">
-
-              <div className="chart-panel">
-                <h4>Estados de Tutorías</h4>
-                <p className="chart-sub">Distribución por estado</p>
-                <ResponsiveContainer width="100%" height={240}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Completadas', value: metricas.tutoriasCompletadas || 0 },
-                        { name: 'Programadas', value: metricas.tutoriasProgramadas || 0 },
-                        { name: 'Canceladas',  value: metricas.tutoriasCanceladas  || 0 },
-                      ]}
-                      cx="50%" cy="50%"
-                      outerRadius={90}
-                      dataKey="value"
-                      labelLine={false}
-                      label={({ name, percent }) =>
-                        percent > 0 ? `${(percent * 100).toFixed(0)}%` : ''
-                      }
-                    >
-                      <Cell fill="#10b981" />
-                      <Cell fill="#8b5cf6" />
-                      <Cell fill="#ef4444" />
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend wrapperStyle={{ color: isDark ? '#f1f5f9' : '#111827' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="chart-panel">
-                <h4>Distribución de Usuarios</h4>
-                <p className="chart-sub">Docentes vs Estudiantes</p>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={[
-                      { name: 'Docentes',    cantidad: metricas.totalDocentes    || 0 },
-                      { name: 'Estudiantes', cantidad: metricas.totalEstudiantes || 0 },
-                    ]}
-                    margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                    <XAxis dataKey="name" tick={{ fontSize: 13, fill: chartTick }} />
-                    <YAxis tick={{ fontSize: 13, fill: chartTick }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="cantidad" radius={[8, 8, 0, 0]} name="Cantidad">
-                      <Cell fill="#8b5cf6" />
-                      <Cell fill="#6366f1" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="chart-panel">
-                <h4>Gestión de Horarios</h4>
-                <p className="chart-sub">Disponibles vs Ocupados</p>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={[{
-                      name: 'Horarios',
-                      Disponibles: metricas.horariosDisponibles || 0,
-                      Ocupados: (metricas.totalHorarios || 0) - (metricas.horariosDisponibles || 0),
-                    }]}
-                    margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                    <XAxis dataKey="name" tick={{ fontSize: 13, fill: chartTick }} />
-                    <YAxis tick={{ fontSize: 13, fill: chartTick }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend wrapperStyle={{ color: isDark ? '#f1f5f9' : '#111827' }} />
-                    <Bar dataKey="Disponibles" fill="#10b981" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="Ocupados"    fill="#94a3b8" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-            </div>
+            {formatDiaLargo(ahora)}
+            {actualizado && <span className="dash-updated"> · Datos actualizados a las {formatHora(actualizado)}</span>}
           </>
-        ) : null}
+        }
+        actions={
+          <>
+            <button type="button" className="btn btn--secondary" onClick={refrescar} disabled={refrescando}>
+              {refrescando ? <Spinner /> : <Icon name="refresh" size={18} />}
+              {refrescando ? 'Actualizando…' : 'Actualizar'}
+            </button>
+            <Link className="btn btn--primary" to="/agendar-tutoria">
+              <Icon name="calendarPlus" size={18} /> Agendar tutoría
+            </Link>
+          </>
+        }
+      />
+
+      <div className="dash-grid dash-grid--top">
+        <DashPanel
+          className="dash-area-attention"
+          title="Requiere atención"
+          subtitle={
+            atencion.activos.length
+              ? 'Ordenado por prioridad. Cada asunto enlaza a donde se resuelve.'
+              : 'Revisión de tutorías, horarios, calificaciones y encuestas.'
+          }
+          actions={atencion.activos.length > 0 && (
+            <span className="count-pill">{formatNum(atencion.activos.length)} {atencion.activos.length === 1 ? 'asunto' : 'asuntos'}</span>
+          )}
+          status={atencionEstado}
+          error={errorDe('tutorias')}
+          onRetry={loadData}
+        >
+          <Atencion
+            activos={atencion.activos}
+            atendidos={atencion.atendidos}
+            enOrden={atencion.enOrden}
+            fallos={fallosAtencion}
+            onAtender={atender}
+            onDeshacer={deshacer}
+            ocupado={atendiendo}
+          />
+        </DashPanel>
+
+        <DashPanel
+          className="dash-area-agenda"
+          title="Agenda"
+          subtitle="Hoy y próximos 14 días"
+          status={estadoDe('tutorias')}
+          error={errorDe('tutorias')}
+          onRetry={loadData}
+          footer={<Link className="dash-link" to="/horarios">Ver todos los horarios <Icon name="arrowRight" size={16} /></Link>}
+        >
+          <Agenda agenda={agenda} ahora={ahora} />
+        </DashPanel>
       </div>
 
+      <DashPanel
+        className="dash-kpis-panel"
+        title="Indicadores"
+        subtitle="Cada cifra se compara con su periodo anterior o con su total"
+        status={estadoDe('tutorias')}
+        error={errorDe('tutorias')}
+        onRetry={loadData}
+        skeleton="kpi"
+      >
+        <Indicadores kpis={kpis} />
+      </DashPanel>
+
+      <div className="dash-grid dash-grid--mid">
+        <DashPanel
+          className="dash-area-trend"
+          title="Actividad mensual"
+          subtitle="Tutorías por mes de la sesión y estado, últimos 12 meses"
+          status={estadoDe('tutorias')}
+          error={errorDe('tutorias')}
+          onRetry={loadData}
+          skeleton="chart"
+        >
+          <Tendencia tendencia={tendencia} />
+        </DashPanel>
+
+        <DashPanel className="dash-area-quality" title="Calidad" subtitle="Histórico completo">
+          <Calidad
+            sesiones={{ status: estadoQuery(retroQ), error: retroQ.error, retry: () => retroQ.refetch(), data: calidadSesiones }}
+            encuestas={{ status: estadoQuery(encuestasQ), error: encuestasQ.error, retry: () => encuestasQ.refetch(), data: encuestas }}
+          />
+        </DashPanel>
+      </div>
+
+      <section className="dash-analysis" aria-labelledby="dash-analisis-t">
+        <div className="dash-analysis__head">
+          <div>
+            <h2 id="dash-analisis-t" className="dash-analysis__title">Análisis por periodo</h2>
+            <p className="dash-analysis__subtitle">
+              {desde ? `Sesiones desde el ${formatFecha(desde)}, incluidas las programadas.` : 'Todas las sesiones registradas.'}
+            </p>
+          </div>
+          <div className="segmented" role="group" aria-label="Periodo del análisis">
+            {PERIODOS.map((p) => (
+              <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => setPeriodo(p.id)}>{p.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="dash-grid dash-grid--analysis">
+          <DashPanel
+            className="dash-area-demand"
+            headingLevel={3}
+            title="Demanda"
+            subtitle={`${formatNum(enPeriodo.length)} tutorías · ${periodoLabel}`}
+            status={estadoDe('tutorias')}
+            error={errorDe('tutorias')}
+            onRetry={loadData}
+          >
+            <Demanda tutorias={enPeriodo} />
+          </DashPanel>
+
+          <DashPanel
+            className="dash-area-load"
+            headingLevel={3}
+            title="Carga por docente y tutor"
+            subtitle={`${formatNum(carga.length)} personas: docentes, tutores y otros asignados a tutorías`}
+            status={estadoDe('tutorias', 'usuarios')}
+            error={errorDe('tutorias') || errorDe('usuarios')}
+            onRetry={loadData}
+            footer={esAdmin && (
+              <Link className="dash-link" to="/estudiantes">Gestionar docentes y tutores <Icon name="arrowRight" size={16} /></Link>
+            )}
+          >
+            {retroQ.isError && !retro && (
+              <p className="dash-inline-note" role="status">Calificaciones no disponibles: no se pudo cargar la retroalimentación.</p>
+            )}
+            <Carga filas={carga} />
+          </DashPanel>
+        </div>
+      </section>
     </div>
   )
 }

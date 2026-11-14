@@ -3,6 +3,8 @@ import { tutoriaService } from '../services/apiService'
 import { useData } from '../context/DataContext'
 import TutoriaFinalizadaDetailModal from '../components/TutoriaFinalizadaDetailModal'
 import './TutoriasFinalizadas.css'
+import { nombreAsignado, tutoriaSinAsignar } from '../lib/usuarios'
+import Icon from '../components/ui/Icon'
 
 const TutoriasFinalizadas = () => {
   const { tutorias: tutoriasContext, loading: contextLoading } = useData()
@@ -124,7 +126,7 @@ const TutoriasFinalizadas = () => {
           <p>Visualiza y gestiona todas las tutorías que han sido finalizadas</p>
         </div>
         <button className="btn-primary" onClick={loadTutoriasFinalizadas}>
-          🔄 Actualizar
+          <Icon name="refresh" size={18} className="icon--inline" />Actualizar
         </button>
       </div>
 
@@ -152,7 +154,7 @@ const TutoriasFinalizadas = () => {
       <div className="tutorias-list">
         {filteredTutorias.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📚</div>
+            <Icon name="book" size={40} className="empty-icon" />
             <h3>No se encontraron tutorías finalizadas</h3>
             <p>
               {searchQuery
@@ -179,7 +181,16 @@ const TutoriasFinalizadas = () => {
               <div 
                 key={id} 
                 className="tutoria-card"
+                role="button"
+                tabIndex={0}
+                aria-haspopup="dialog"
                 onClick={() => setSelectedTutoria(tutoria)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedTutoria(tutoria)
+                  }
+                }}
               >
                 <div className="tutoria-card-header">
                   <div className="tutoria-card-title-section">
@@ -196,12 +207,12 @@ const TutoriasFinalizadas = () => {
                 <div className="tutoria-card-body">
                   <div className="tutoria-card-info">
                     <div className="info-item">
-                      <span className="info-icon">📅</span>
+                      <Icon name="calendar" size={18} className="info-icon" />
                       <span>{formatDate(fechaTutoria)}</span>
                     </div>
                     {horarioHoraInicio && horarioHoraFin && (
                       <div className="info-item">
-                        <span className="info-icon">🕐</span>
+                        <Icon name="clock" size={18} className="info-icon" />
                         <span>
                           {new Date(horarioHoraInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} - 
                           {new Date(horarioHoraFin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
@@ -209,24 +220,24 @@ const TutoriasFinalizadas = () => {
                       </div>
                     )}
                     <div className="info-item">
-                      <span className="info-icon">📍</span>
+                      <Icon name="mapPin" size={18} className="info-icon" />
                       <span>{modalidad}</span>
                     </div>
                     {horarioEspacio && (
                       <div className="info-item">
-                        <span className="info-icon">🏢</span>
+                        <Icon name="building" size={18} className="info-icon" />
                         <span>{horarioEspacio}</span>
                       </div>
                     )}
-                    {usuarioNombre && (
+                    {(usuarioNombre || tutoriaSinAsignar(tutoria)) && (
                       <div className="info-item">
-                        <span className="info-icon">👩‍🏫</span>
-                        <span>{usuarioNombre} {usuarioApellidos}</span>
+                        <Icon name="teacher" size={18} className="info-icon" />
+                        <span>{nombreAsignado(tutoria)}</span>
                       </div>
                     )}
                     {Array.isArray(estudiantes) && estudiantes.length > 0 && (
                       <div className="info-item">
-                        <span className="info-icon">👥</span>
+                        <Icon name="users" size={18} className="info-icon" />
                         <span>{estudiantes.length} estudiante{estudiantes.length !== 1 ? 's' : ''}</span>
                       </div>
                     )}

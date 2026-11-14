@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { retroalimentacionService, usuarioService, tutoriaService } from '../services/apiService'
 import './Retroalimentaciones.css'
+import Icon from '../components/ui/Icon'
+import Stars from '../components/ui/Stars'
 
 const Retroalimentaciones = () => {
   const [retroalimentaciones, setRetroalimentaciones] = useState([])
@@ -184,13 +186,7 @@ const Retroalimentaciones = () => {
 
     return (
       <div className="stars-container">
-        {[...Array(fullStars)].map((_, i) => (
-          <span key={i} className="star full">★</span>
-        ))}
-        {hasHalfStar && <span className="star half">★</span>}
-        {[...Array(emptyStars)].map((_, i) => (
-          <span key={i} className="star empty">☆</span>
-        ))}
+        <Stars value={rating} size={16} />
         <span className="rating-value">{rating.toFixed(2)}</span>
       </div>
     )
@@ -248,7 +244,7 @@ const Retroalimentaciones = () => {
           <p>Gestiona y visualiza todas las retroalimentaciones de tutorías y usuarios</p>
         </div>
         <button className="btn-primary" onClick={loadRetroalimentaciones}>
-          🔄 Actualizar
+          <Icon name="refresh" size={18} className="icon--inline" />Actualizar
         </button>
       </div>
 
@@ -354,7 +350,7 @@ const Retroalimentaciones = () => {
       <div className="retroalimentaciones-list">
         {filteredRetroalimentaciones.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📝</div>
+            <Icon name="fileText" size={40} className="empty-icon" />
             <h3>No se encontraron retroalimentaciones</h3>
             <p>
               {filterType !== 'todas' || filterValue

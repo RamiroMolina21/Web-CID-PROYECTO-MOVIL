@@ -1,12 +1,112 @@
-.app-container {
-  display: flex;
+/* Shell de la aplicación: sidebar fija en escritorio (≥1024px), drawer off-canvas por debajo. */
+.app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-shell__nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1000;
 }
 
 .main-content {
-  flex: 1;
-  margin-left: 280px;
+  margin-left: var(--sidebar-width);
   background-color: var(--bg-main);
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 2rem;
+  min-width: 0;
+}
+
+.main-content:focus {
+  outline: none;
+}
+
+/* ---------- Modo drawer (< 1024px) ---------- */
+.app-shell--drawer .main-content {
+  margin-left: 0;
+  padding: 1.5rem;
+}
+
+.app-shell--drawer .app-shell__nav {
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.28s;
+  box-shadow: var(--shadow-lg);
+}
+
+.app-shell--drawer.is-drawer-open .app-shell__nav {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
+}
+
+.app-shell__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+}
+
+.app-shell__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.is-drawer-open .app-shell__overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.has-drawer,
+.has-modal {
+  overflow: hidden;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 56px;
+  padding: 0 0.5rem;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.topbar__title {
+  font-weight: 600;
+  color: var(--text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+  .app-shell--drawer .main-content {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell--drawer .app-shell__nav,
+  .app-shell--drawer.is-drawer-open .app-shell__nav,
+  .app-shell__overlay {
+    transition: none;
+  }
 }

@@ -1,9 +1,14 @@
 import React, { useState } from 'react'
 import './HorarioDetailModal.css'
 import { useData } from '../context/DataContext'
+import { useToast, useConfirm } from './ui/Feedback'
+import Icon from './ui/Icon'
+import { ETIQUETA_ELIMINADO } from '../lib/usuarios'
 
 const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
   const { getDocenteById, tutorias, docentes, deleteTutoria, loadData } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [eliminandoTutoria, setEliminandoTutoria] = useState(null)
   
   if (!horario) return null
@@ -52,7 +57,7 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
 
   const handleDeleteTutorias = async () => {
     if (assignedTutorias.length === 0) {
-      alert('No hay tutorías asociadas a este horario')
+      toast.info('No hay tutorías asociadas a este horario.')
       return
     }
 
@@ -60,7 +65,7 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
       ? '¿Estás seguro de que deseas eliminar esta tutoría?'
       : `¿Estás seguro de que deseas eliminar las ${assignedTutorias.length} tutorías asociadas a este horario?`
 
-    if (!window.confirm(mensaje)) {
+    if (!(await confirm({ title: 'Eliminar tutorías', message: mensaje, confirmLabel: 'Eliminar', danger: true }))) {
       return
     }
 
@@ -82,11 +87,11 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
       
       // Recargar datos para reflejar los cambios
       await loadData()
-      alert('Tutorías eliminadas exitosamente')
+      toast.success('Tutorías eliminadas.')
       onClose()
     } catch (error) {
       console.error('Error eliminando tutorías:', error)
-      alert(error.message || 'Error al eliminar las tutorías. Por favor, inténtalo de nuevo.')
+      toast.error(error.message || 'Error al eliminar las tutorías. Por favor, inténtalo de nuevo.')
     } finally {
       setEliminandoTutoria(null)
     }
@@ -94,21 +99,21 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
 
   return (
     <div className="horario-modal-overlay" onClick={onClose}>
-      <div className="horario-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="horario-modal" role="dialog" aria-modal="true" aria-labelledby="hd-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="horario-modal-header">
           <div className="horario-modal-title-section">
             <div className="horario-color-indicator"></div>
             <div>
-              <h2 className="horario-modal-title">{horario.titulo || 'Horario'}</h2>
+              <h2 className="horario-modal-title" id="hd-modal-title">{horario.titulo || 'Horario'}</h2>
               <p className="horario-modal-date">{fechaFormateada}</p>
               <p className="horario-modal-capacity">
                 {(() => {
                   const capacity = horario.cuposDisponibles || 5
                   const existingCount = todosEstudiantesIds.length
                   const available = capacity - existingCount
-                  const color = available === 0 ? '#ef4444' : available <= 2 ? '#f97316' : '#22c55e'
+                  const tono = available <= 0 ? 'lleno' : available <= 2 ? 'pocos' : 'libre'
                   return (
-                    <span style={{ color }}>
+                    <span className={`hd-capacity hd-capacity--${tono}`}>
                       {existingCount}/{capacity} cupos ocupados ({available} disponible{available !== 1 ? 's' : ''})
                     </span>
                   )
@@ -123,65 +128,75 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
                 onClick={handleDeleteTutorias}
                 disabled={eliminandoTutoria !== null}
                 title={assignedTutorias.length === 1 ? 'Eliminar tutoría' : `Eliminar ${assignedTutorias.length} tutorías`}
+                aria-label={assignedTutorias.length === 1 ? 'Eliminar tutoría' : `Eliminar ${assignedTutorias.length} tutorías`}
               >
-                {eliminandoTutoria !== null ? '⏳' : '🗑️'}
+                {eliminandoTutoria !== null ? <span className="spinner" aria-hidden="true"><span /></span> : <Icon name="trash" size={18} />}
               </button>
             ) : (
               <button 
                 className="horario-action-btn" 
                 onClick={() => onDelete && onDelete(horario.id)}
                 title="Eliminar horario"
+                aria-label="Eliminar horario"
               >
-                🗑️
+                <Icon name="trash" size={18} />
               </button>
             )}
             <button 
               className="horario-action-btn" 
               onClick={() => onEdit(horario)}
               title="Editar"
+              aria-label="Editar horario"
             >
-              ✏️
+              <Icon name="edit" size={18} />
             </button>
             <button 
               className="horario-action-btn horario-close-btn" 
               onClick={onClose}
               title="Cerrar"
+              aria-label="Cerrar"
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
         </div>
 
         <div className="horario-modal-content">
           <div className="horario-detail-item">
-            <span className="horario-detail-icon">☰</span>
+            <Icon name="text" size={18} className="horario-detail-icon" />
             <span>Horario</span>
           </div>
           <div className="horario-detail-item">
-            <span className="horario-detail-icon">🕐</span>
+            <Icon name="clock" size={18} className="horario-detail-icon" />
             <span>{horario.horaInicio} - {horario.horaFin}</span>
           </div>
           {horario.tipoClase && (
             <div className="horario-detail-item">
-              <span className="horario-detail-icon">📍</span>
+              <Icon name="mapPin" size={18} className="horario-detail-icon" />
               <span>{horario.tipoClase}</span>
             </div>
           )}
           {horario.salon && (
             <div className="horario-detail-item">
-              <span className="horario-detail-icon">🏢</span>
+              <Icon name="building" size={18} className="horario-detail-icon" />
               <span>{horario.salon}</span>
             </div>
           )}
           {horario.cuposDisponibles && (
             <div className="horario-detail-item">
-              <span className="horario-detail-icon">👥</span>
+              <Icon name="users" size={18} className="horario-detail-icon" />
               <span>{horario.cuposDisponibles} cupo{horario.cuposDisponibles > 1 ? 's' : ''} disponible{horario.cuposDisponibles > 1 ? 's' : ''}</span>
             </div>
           )}
-          {docente && (
+          {horario.sinDueno && (
             <div className="horario-detail-item">
-              <span className="horario-detail-icon">👩‍🏫</span>
+              <Icon name="teacher" size={18} className="horario-detail-icon" />
+              <span>{ETIQUETA_ELIMINADO}</span>
+            </div>
+          )}
+          {docente && !horario.sinDueno && (
+            <div className="horario-detail-item">
+              <Icon name="teacher" size={18} className="horario-detail-icon" />
               <div className="horario-docente-info">
                 <div className="horario-docente-name">
                   {docente.nombre || (docente.nombres && docente.apellidos ? `${docente.nombres} ${docente.apellidos}`.trim() : docente.nombres || 'Docente')}
@@ -194,7 +209,7 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
             </div>
           )}
           <div className="horario-detail-item">
-            <span className="horario-detail-icon">🔒</span>
+            <Icon name="lock" size={18} className="horario-detail-icon" />
             <span>{horario.disponible ? 'Disponible' : 'No disponible'}</span>
           </div>
           {horario.notas && (
