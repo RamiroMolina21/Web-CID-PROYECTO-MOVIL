@@ -6,7 +6,7 @@ test.describe('Sin sesión', () => {
   test('una ruta protegida redirige al login conservando el destino @responsive', async ({ page }) => {
     await page.goto('/mis-tutorias')
     await expect(page).toHaveURL(/\/login\?redirect=%2Fmis-tutorias/)
-    await expect(page.getByRole('heading', { name: 'TutorPro' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'CDITutorPro' })).toBeVisible()
   })
 
   test('validación del formulario sin llamar a la API', async ({ page }) => {

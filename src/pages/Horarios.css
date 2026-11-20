@@ -30,7 +30,7 @@
 }
 
 .btn-primary {
-  background: #7b42f6;
+  background: var(--accent-solid);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -48,8 +48,8 @@
 
 .btn-secondary {
   background: var(--bg-card);
-  color: #7b42f6;
-  border: 1px solid #7b42f6;
+  color: var(--accent-text);
+  border: 1px solid var(--accent);
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   font-weight: 500;
@@ -110,7 +110,7 @@
 }
 
 .legend-color.legend-horario {
-  background: #4f46e5;
+  background: #00529c;
 }
 
 .legend-color.legend-tutoria {
@@ -266,7 +266,7 @@
 }
 
 .horario-block {
-  background: #6366f1;
+  background: #00529c;
   color: white;
   border-radius: 6px;
   padding: 0.5rem;
@@ -307,7 +307,7 @@
 }
 
 .tutoria-block {
-  background: #10b981 !important;
+  background: #047857 !important;
   color: white;
   border-radius: 6px;
   padding: 0.5rem;
@@ -342,14 +342,14 @@
 
 .tutoria-horario-badge {
   font-size: 0.625rem;
-  opacity: 0.8;
+  opacity: 0.95;
   font-weight: 400;
   font-style: italic;
 }
 
 .month-tutoria-horario-badge {
   font-size: 0.625rem;
-  opacity: 0.8;
+  opacity: 0.95;
   font-weight: 400;
   font-style: italic;
 }
@@ -493,7 +493,7 @@
 
 /* Horarios in month view should be purple to match horario-block */
 .month-horario-label {
-  background: #4f46e5; /* contraste ≥4.5:1 con texto blanco */
+  background: #00529c; /* contraste ≥4.5:1 con texto blanco */
   color: white;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
@@ -666,8 +666,8 @@
 }
 
 .year-day-indicator.horario-indicator:hover {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(0, 82, 156, 0.15);
+  border-color: rgba(0, 82, 156, 0.3);
 }
 
 .indicator-dot {
@@ -684,7 +684,7 @@
 }
 
 .indicator-dot.horario-dot {
-  background: #6366f1;
+  background: #00529c;
 }
 
 .indicator-count {

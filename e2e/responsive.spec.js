@@ -121,7 +121,7 @@ for (const vista of VISTAS) {
         await comprobar(page, 'admin agregar estudiante')
       }
 
-      for (const boton of ['Nuevo Estudiante', 'Nuevo Docente']) {
+      for (const boton of ['Nuevo Estudiante', 'Nuevo Docente', 'Nuevo Tutor']) {
         await page.goto('/estudiantes')
         await page.getByRole('button', { name: boton }).click()
         await expect(page.getByRole('button', { name: /Guardar/ })).toBeVisible()

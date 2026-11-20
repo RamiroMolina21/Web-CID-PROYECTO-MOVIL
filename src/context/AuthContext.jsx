@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { authService } from '../services/apiService'
 import { setTokenProvider, setUnauthorizedHandler, resetUnauthorizedGuard, ApiError } from '../lib/apiClient'
-import { readSession, writeSession, clearSession, msHastaExpirar, SESSION_KEY, esCuentaDesactivada } from '../lib/session'
+import { readSession, writeSession, clearSession, msHastaExpirar, SESSION_KEY, motivo401 } from '../lib/session'
 import { tieneRol, normalizarRol, getRol, GESTION, PERSONAL } from '../lib/roles'
 import { invalidarUsuariosPorRol } from '../features/tutorias/tutorias'
 
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   // El cliente HTTP lee el token de aquí y avisa de los 401
   useEffect(() => {
     setTokenProvider(() => tokenRef.current)
-    setUnauthorizedHandler((err) => logout(esCuentaDesactivada(err) ? 'desactivada' : 'expirada'))
+    setUnauthorizedHandler((err) => logout(motivo401(err)))
     return () => {
       setTokenProvider(null)
       setUnauthorizedHandler(null)
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       if (!sigueVigente()) return
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        logout(err.status === 401 ? (esCuentaDesactivada(err) ? 'desactivada' : 'expirada') : 'sin-acceso')
+        logout(err.status === 401 ? motivo401(err) : 'sin-acceso')
       } else {
         // Sin conexión: se mantiene la sesión guardada y se avisa
         setSession(stored)
@@ -156,7 +156,7 @@ export const AuthProvider = ({ children }) => {
       throw new Error('La respuesta del servidor no contiene la sesión.')
     }
     if (!normalizarRol(getRol(response.usuario))) {
-      throw new ApiError({ status: 403, message: 'Tu cuenta no tiene acceso a TutorPro.' })
+      throw new ApiError({ status: 403, message: 'Tu cuenta no tiene acceso a CDITutorPro.' })
     }
     const next = {
       token: response.token,

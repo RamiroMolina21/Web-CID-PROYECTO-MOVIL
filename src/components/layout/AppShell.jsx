@@ -24,7 +24,7 @@ const useMediaQuery = (query) => {
   return matches
 }
 
-const tituloDeRuta = (pathname) => TITULOS.find(([re]) => re.test(pathname))?.[1] || 'TutorPro'
+const tituloDeRuta = (pathname) => TITULOS.find(([re]) => re.test(pathname))?.[1] || 'CDITutorPro'
 
 const AppShell = () => {
   const location = useLocation()
@@ -44,7 +44,7 @@ const AppShell = () => {
 
   // Título del documento y foco al h1 al cambiar de ruta
   useEffect(() => {
-    document.title = `${titulo} · TutorPro`
+    document.title = `${titulo} · CDITutorPro`
     if (firstRender.current) {
       firstRender.current = false
       return

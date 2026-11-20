@@ -23,6 +23,8 @@ const MisTutorias = lazy(() => import('./pages/personal/MisTutorias'))
 const TutoriaDetalle = lazy(() => import('./pages/personal/TutoriaDetalle'))
 const FinalizarTutoria = lazy(() => import('./pages/personal/FinalizarTutoria'))
 const Configuracion = lazy(() => import('./pages/Configuracion'))
+const OlvideContrasena = lazy(() => import('./pages/recuperacion/OlvideContrasena'))
+const RestablecerContrasena = lazy(() => import('./pages/recuperacion/RestablecerContrasena'))
 
 const PageFallback = () => <Splash label="Cargando…" />
 
@@ -36,6 +38,8 @@ function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/encuesta" element={<EncuestaPage />} />
+                <Route path="/olvide-contrasena" element={<OlvideContrasena />} />
+                <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
 
                 <Route element={<RequireAuth />}>
                   <Route element={<AppShell />}>

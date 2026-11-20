@@ -5,7 +5,7 @@
 
 DESCRIPCIÓN GENERAL
 --------------------------------------------------------------------------------
-TutorPro es una aplicación web completa desarrollada en React para la gestión 
+CDITutorPro es una aplicación web completa desarrollada en React para la gestión 
 integral de tutorías académicas. El sistema permite administrar horarios, 
 estudiantes, docentes, tutorías agendadas, retroalimentaciones y métricas 
 estadísticas, todo integrado con una API REST desarrollada en .NET.

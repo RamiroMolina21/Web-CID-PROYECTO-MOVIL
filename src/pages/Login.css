@@ -3,7 +3,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('../img/entradalogin.jpg');
+  background-color: #2b2b28; /* mientras carga la imagen */
+  background-image: url('../img/fondologin.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -165,7 +166,7 @@
 }
 
 .login-button {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+  background: var(--accent-solid);
   color: white;
   border: none;
   padding: 1rem;
@@ -179,7 +180,7 @@
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(123, 66, 246, 0.3);
+  box-shadow: 0 10px 20px rgba(177, 29, 37, 0.3);
 }
 
 .login-button:disabled {
@@ -198,6 +199,35 @@
   line-height: 1.4;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.success-message {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* «¿Olvidaste tu contraseña?»: enlace de texto alineado a la derecha bajo el campo */
+.forgot-link {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -0.5rem -0.25rem -0.75rem 0;
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--info-text);
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .info-message {
@@ -259,5 +289,41 @@
 @media (prefers-reduced-motion: reduce) {
   .login-button:hover:not(:disabled) {
     transform: none;
+  }
+}
+
+/* ---------- Marca CDI (logo oficial + fondo como el hero de la web del Centro de Idiomas) ---------- */
+/* Capa oscura sobre la foto, como el hero de la web oficial: el texto del formulario y el contraste no dependen de la imagen */
+.login-container::before {
+  background: linear-gradient(180deg, rgba(20, 20, 18, 0.62) 0%, rgba(20, 20, 18, 0.72) 100%);
+}
+
+.cdi-logo {
+  display: block;
+  width: min(240px, 80%);
+  height: auto;
+  margin: 0 auto 1.25rem;
+}
+
+/* El logo oficial tiene texto gris sobre transparente: en oscuro se apoya en una placa blanca (sin alterarlo) */
+[data-theme='dark'] .cdi-logo {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-sizing: content-box;
+  width: min(212px, 72%);
+}
+
+.login-title {
+  margin: 0 0 0.375rem;
+  font-size: 1.75rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+@media (max-width: 480px) {
+  .login-title {
+    font-size: 1.5rem;
   }
 }

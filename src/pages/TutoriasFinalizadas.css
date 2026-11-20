@@ -25,7 +25,7 @@
 }
 
 .btn-primary {
-  background: #7b42f6;
+  background: var(--accent-solid);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -89,7 +89,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #7b42f6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -113,7 +113,7 @@
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #7b42f6;
+  color: var(--accent-text);
   margin-bottom: 0.5rem;
 }
 

@@ -1,4 +1,4 @@
-# Migración MAUI → Web (TutorPro) — Fase 1: Análisis y planificación
+# Migración MAUI → Web (CDITutorPro) — Fase 1: Análisis y planificación
 
 - **Autor:** Alistar (frontend) · **Fecha:** 2026-11-11 · **Estado:** propuesta para revisión (no se ha modificado código)
 - **Objetivo:** retirar la app MAUI. La web (React 18 + Vite, JS) debe ofrecer **equivalencia funcional completa** para Docente y Tutor, mantener lo que ya hace para Administrador y Auxiliar, e integrarse con el backend nuevo con JWT (rama `feature/jwt-auth`).
@@ -401,7 +401,7 @@ hasRole(...roles), isGestion (Admin|Aux), isPersonal (Docente|Tutor)
 2. **Expiración proactiva:** `setTimeout` hasta `expiresAt` (acotado a 2^31-1 ms) → `logout({reason:'expirada'})`. Aviso no intrusivo 5 min antes ("Tu sesión vence a las HH:mm").
 3. **Multi-pestaña:** escuchar `storage` → si otra pestaña cierra sesión, esta también.
 4. **Login por rol:** se elimina el filtro de rol en cliente. Redirección: `?redirect=` si la ruta pertenece al rol; si no, a la home del rol (Admin/Aux `/`, Docente `/agenda`, Tutor `/mis-tutorias`).
-5. **Mensajes de login:** 400 → errores por campo; 401 → "Correo o contraseña incorrectos"; 403 → "Tu cuenta no tiene acceso a TutorPro" (Estudiante); 429 → "Demasiados intentos. Intenta de nuevo en N s" (lee `Retry-After`, deshabilita el botón con cuenta atrás); red → "No se pudo conectar con el servidor".
+5. **Mensajes de login:** 400 → errores por campo; 401 → "Correo o contraseña incorrectos"; 403 → "Tu cuenta no tiene acceso a CDITutorPro" (Estudiante); 429 → "Demasiados intentos. Intenta de nuevo en N s" (lee `Retry-After`, deshabilita el botón con cuenta atrás); red → "No se pudo conectar con el servidor".
 6. **Copy del login:** quitar "Solo usuarios Administrador y Auxiliar pueden acceder".
 
 ### 4.3 Cliente HTTP (`services/apiClient.js`, refactor de `apiService.js`)
@@ -478,7 +478,7 @@ Pie del sidebar (todos): avatar con iniciales, nombre, rol, conmutador de tema, 
 - Enlace "Saltar al contenido" y `<main id="contenido" tabIndex={-1}>`; al cambiar de ruta se mueve el foco al `<h1>` de la página y se actualiza `document.title`.
 - Iconos: hoy son emojis; se mantienen en esta fase para no alterar la identidad (se marcan `aria-hidden`). Sustituirlos por un set SVG coherente es una mejora opcional posterior (Q8).
 
-**Identidad visual:** se respetan los tokens de `index.css` (`--accent #7b42f6`, `--accent-secondary #6366f1`, superficies, radios 8–14 px, modo oscuro por `data-theme`), la tipografía de sistema y el tono "TutorPro / Gestión de Tutorías". Las vistas nuevas reutilizan esos tokens; se añaden solo tokens que faltan (`--warning-*`, `--success-*` para badges de estado, `--space-*` y `--radius-*` para consistencia) sin cambiar los existentes. No se introduce librería de UI. Tras construir, se ofrecerá `impeccable init`/`document` para capturar PRODUCT.md/DESIGN.md del sistema existente.
+**Identidad visual:** se respetan los tokens de `index.css` (desde la marca CDI: `--accent #b11d25` rojo CDI, `--accent-secondary #00529c` azul CECAR; superficies, radios 8–14 px, modo oscuro por `data-theme`), la tipografía de sistema y el tono "CDITutorPro / Gestión de Tutorías". Las vistas nuevas reutilizan esos tokens; se añaden solo tokens que faltan (`--warning-*`, `--success-*` para badges de estado, `--space-*` y `--radius-*` para consistencia) sin cambiar los existentes. No se introduce librería de UI. Tras construir, se ofrecerá `impeccable init`/`document` para capturar PRODUCT.md/DESIGN.md del sistema existente.
 
 ### 4.6 Capa de datos
 
@@ -572,7 +572,7 @@ Hasta que existan R1/R6 no se usarán mocks silenciosos: la pestaña "Agendadas 
 |---|---|---|
 | X1 | Login correcto de cada rol | Redirige a su home; menú correcto; `localStorage` con `token`, `expiresAt`, `usuario` |
 | X2 | Credenciales erróneas | "Correo o contraseña incorrectos" (401); sin sesión |
-| X3 | Login de Estudiante | "Tu cuenta no tiene acceso a TutorPro" (403) |
+| X3 | Login de Estudiante | "Tu cuenta no tiene acceso a CDITutorPro" (403) |
 | X4 | 11 intentos en 1 min | Mensaje 429 con cuenta atrás; botón deshabilitado |
 | X5 | Recargar con sesión válida | Llama `GET Auth/me`, sigue autenticado en la misma ruta |
 | X6 | Token caducado/manipulado en storage | `Auth/me` 401 → login con "Tu sesión ha expirado" y `redirect` |

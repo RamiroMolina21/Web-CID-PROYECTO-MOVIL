@@ -1,8 +1,9 @@
 import React from 'react'
 
-// Logo de TutorPro. Isotipo: las dos páginas de un libro abierto forman el travesaño de una "T"
-// (Tutor) y el lomo baja como su asta. Misma geometría que public/favicon.svg (viewBox 32).
-// La loseta usa --brand y el trazo --brand-contrast, así funciona en claro y oscuro.
+// Marca de CDITutorPro (Centro de Idiomas CDI · CECAR).
+// Isotipo propio y coherente con el logo institucional: loseta en rojo CDI con la burbuja de diálogo "…"
+// del logo del Centro de Idiomas. No reproduce ni deforma el logo oficial (ese se usa tal cual en el login).
+// Misma geometría que public/favicon.svg (viewBox 32).
 export const LogoMark = ({ size = 40, className = '', title }) => (
   <svg
     width={size}
@@ -15,23 +16,24 @@ export const LogoMark = ({ size = 40, className = '', title }) => (
   >
     {title && <title>{title}</title>}
     <rect className="logo-mark__tile" width="32" height="32" rx="8" />
-    <g className="logo-mark__glyph">
-      <path d="M15.1 10.3C12.5 8.5 9.7 7.8 6.7 8 6.3 8.03 6 8.37 6 8.8V12.9C6 13.35 6.36 13.7 6.8 13.67 9.6 13.5 12.4 14.2 15.1 16Z" />
-      <path d="M16.9 10.3C19.5 8.5 22.3 7.8 25.3 8 25.7 8.03 26 8.37 26 8.8V12.9C26 13.35 25.64 13.7 25.2 13.67 22.4 13.5 19.6 14.2 16.9 16Z" />
-      <rect x="14.2" y="13" width="3.6" height="12" rx="1.8" />
+    <path className="logo-mark__glyph" d="M16 6.5c-5.8 0-10.5 3.9-10.5 8.8 0 2.6 1.3 4.9 3.4 6.5l-1 4.2c-.1.5.4.9.9.6l4.6-2.6c.8.2 1.7.2 2.6.2 5.8 0 10.5-3.9 10.5-8.9S21.8 6.5 16 6.5Z" />
+    <g className="logo-mark__dots">
+      <circle cx="11.2" cy="15.3" r="1.6" />
+      <circle cx="16" cy="15.3" r="1.6" />
+      <circle cx="20.8" cy="15.3" r="1.6" />
     </g>
   </svg>
 )
 
 /**
- * Isotipo + logotipo. El nombre es texto real (accesible y nítido a cualquier tamaño).
- * `as` permite usarlo como encabezado (p. ej. h1 en el login).
+ * Isotipo + logotipo "CDITutorPro" (texto real, accesible y nítido). "CDI" en el rojo institucional.
+ * `as` permite usarlo como encabezado.
  */
 const Logo = ({ size = 40, tagline, as: Tag = 'span', className = '', layout = 'row' }) => (
   <Tag className={`brand brand--${layout} ${className}`.trim()}>
     <LogoMark size={size} />
     <span className="brand__text">
-      <span className="brand__name">Tutor<span className="brand__pro">Pro</span></span>
+      <span className="brand__name"><span className="brand__cdi">CDI</span>TutorPro</span>
       {tagline && <span className="brand__tagline">{tagline}</span>}
     </span>
   </Tag>

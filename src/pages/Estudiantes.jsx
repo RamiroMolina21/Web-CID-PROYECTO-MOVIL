@@ -24,6 +24,9 @@ const ESTADOS = [
 const ROLES_FILTRO = ['Estudiante', 'Docente', 'Tutor', 'Administrador', 'Auxiliar']
 
 /** UsuarioResponse → forma que esperan las tarjetas y los formularios existentes. */
+const ROLES_PERSONAL_ADMIN = [ROLES.DOCENTE, ROLES.TUTOR, ROLES.ADMIN, ROLES.AUXILIAR]
+const ROLES_PERSONAL_AUXILIAR = [ROLES.DOCENTE, ROLES.TUTOR]
+
 const aUsuario = (u) => {
   const rol = u.tipoRol || 'Sin rol'
   return {
@@ -64,16 +67,22 @@ const Estudiantes = () => {
   const confirm = useConfirm()
   const { user } = useAuth()
   const yo = getUserId(user)
-  // Regla del backend: el Auxiliar solo crea/edita/elimina/activa Estudiantes (403 en otro caso).
+  // Reglas del backend:
+  // - El Auxiliar crea y edita Estudiantes, Docentes y Tutores (403 para Administrador/Auxiliar).
+  // - Eliminar y activar/desactivar personal es solo del Administrador; el Auxiliar solo sobre Estudiantes.
   const esAdmin = tieneRol(user, [ROLES.ADMIN])
-  const puedeGestionar = (u) => esAdmin || u.tipo === 'estudiante'
+  const puedeEditar = (u) => esAdmin || u.tipo === 'estudiante' || ROLES_PERSONAL_AUXILIAR.includes(u.rol)
+  const puedeEliminar = (u) => esAdmin || u.tipo === 'estudiante'
   // Nadie desactiva su propia cuenta (409 en el servidor): no se ofrece.
-  const puedeCambiarEstado = (u) => puedeGestionar(u) && u.id !== yo
+  const puedeCambiarEstado = (u) => puedeEliminar(u) && u.id !== yo
+  // Roles que puede asignar quien usa el formulario de personal
+  const rolesAsignables = esAdmin ? ROLES_PERSONAL_ADMIN : ROLES_PERSONAL_AUXILIAR
 
   const [showForm, setShowForm] = useState(false)
   const [showDocenteForm, setShowDocenteForm] = useState(false)
   const [editingEstudiante, setEditingEstudiante] = useState(null)
   const [editingDocente, setEditingDocente] = useState(null)
+  const [rolNuevo, setRolNuevo] = useState(ROLES.DOCENTE)
   const [searchQuery, setSearchQuery] = useState('')
   const [estado, setEstado] = useState('todos')
   const [rol, setRol] = useState('')
@@ -159,6 +168,12 @@ const Estudiantes = () => {
     }
   }
 
+  const nuevoPersonal = (rolInicial) => {
+    setEditingDocente(null)
+    setRolNuevo(rolInicial)
+    setShowDocenteForm(true)
+  }
+
   const cerrarFormularios = (guardado) => {
     setShowForm(false)
     setShowDocenteForm(false)
@@ -175,11 +190,12 @@ const Estudiantes = () => {
           <p>Gestiona los usuarios del sistema y el estado de sus cuentas</p>
         </div>
         <div className="header-buttons">
-          {esAdmin && (
-            <button type="button" className="btn-secondary" onClick={() => { setEditingDocente(null); setShowDocenteForm(true) }}>
-              <Icon name="plus" size={18} /> Nuevo Docente
-            </button>
-          )}
+          <button type="button" className="btn-secondary" onClick={() => nuevoPersonal(ROLES.DOCENTE)}>
+            <Icon name="plus" size={18} /> Nuevo Docente
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => nuevoPersonal(ROLES.TUTOR)}>
+            <Icon name="plus" size={18} /> Nuevo Tutor
+          </button>
           <button type="button" className="btn-primary" onClick={() => { setEditingEstudiante(null); setShowForm(true) }}>
             <Icon name="plus" size={18} /> Nuevo Estudiante
           </button>
@@ -190,7 +206,7 @@ const Estudiantes = () => {
         <FormularioEstudiante estudiante={editingEstudiante} onClose={() => cerrarFormularios(false)} onSave={() => cerrarFormularios(true)} />
       )}
       {showDocenteForm && (
-        <FormularioDocente docente={editingDocente} onClose={() => cerrarFormularios(false)} onSave={() => cerrarFormularios(true)} />
+        <FormularioDocente docente={editingDocente} rolInicial={rolNuevo} rolesPermitidos={rolesAsignables} onClose={() => cerrarFormularios(false)} onSave={() => cerrarFormularios(true)} />
       )}
 
       <Modal
@@ -290,7 +306,7 @@ const Estudiantes = () => {
                       </div>
                     </div>
                   </div>
-                  {puedeGestionar(u) && (
+                  {puedeEditar(u) && (
                     <div className="estudiante-actions">
                       <button type="button" className="btn-edit" onClick={() => handleEdit(u)}>
                         <Icon name="edit" size={16} /> Editar<span className="sr-only"> a {u.nombre}</span>
@@ -306,9 +322,11 @@ const Estudiantes = () => {
                           {u.activo ? 'Desactivar' : 'Activar'}<span className="sr-only"> la cuenta de {u.nombre}</span>
                         </button>
                       )}
-                      <button type="button" className="btn-delete" onClick={() => handleDelete(u)}>
-                        <Icon name="trash" size={16} /> Eliminar<span className="sr-only"> a {u.nombre}</span>
-                      </button>
+                      {puedeEliminar(u) && (
+                        <button type="button" className="btn-delete" onClick={() => handleDelete(u)}>
+                          <Icon name="trash" size={16} /> Eliminar<span className="sr-only"> a {u.nombre}</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </li>

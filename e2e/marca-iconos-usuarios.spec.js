@@ -40,7 +40,7 @@ test('X-2 favicon y apple-touch-icon servidos y enlazados', async ({ page, reque
   const fav = await request.get('/favicon.svg')
   expect(fav.status()).toBe(200)
   expect(fav.headers()['content-type']).toContain('image/svg+xml')
-  expect(await fav.text()).toContain('<title>TutorPro</title>')
+  expect(await fav.text()).toContain('<title>CDITutorPro</title>')
   const touch = await request.get('/apple-touch-icon.png')
   expect(touch.status()).toBe(200)
   expect(touch.headers()['content-type']).toContain('image/png')
@@ -48,18 +48,21 @@ test('X-2 favicon y apple-touch-icon servidos y enlazados', async ({ page, reque
   await page.goto('/login')
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg')
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/apple-touch-icon.png')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#7b42f6')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#b11d25')
   await expect(page.locator('link[href="/vite.svg"]')).toHaveCount(0)
 })
 
-test('X-3 logo en el login (con el sello de CECAR) y en la encuesta pública, accesibles en claro y oscuro @responsive', async ({ page }) => {
+test('X-3 logo oficial del CDI en el login y en la encuesta pública, accesibles en claro y oscuro @responsive', async ({ page }) => {
   for (const tema of ['light', 'dark']) {
     await page.addInitScript((t) => localStorage.setItem('theme', t), tema)
     await page.goto('/login')
-    const h1 = page.getByRole('heading', { name: 'TutorPro', level: 1 })
+    const h1 = page.getByRole('heading', { name: 'CDITutorPro', level: 1 })
     await expect(h1).toBeVisible()
-    await expect(h1.locator('svg.logo-mark')).toBeVisible()
-    await expect(page.getByRole('img', { name: /CECAR/ })).toBeVisible()
+    // Logo oficial del Centro de Idiomas (imagen con alt) y fondo institucional con capa oscura
+    const logo = page.getByRole('img', { name: 'CDI · Centro de Idiomas · CECAR' })
+    await expect(logo).toBeVisible()
+    expect(await logo.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true)
+    expect(await page.locator('.login-container').evaluate((e) => getComputedStyle(e).backgroundImage)).toContain('fondologin')
     await expectAccessible(page)
     await expectNoHorizontalScroll(page)
 
@@ -76,7 +79,7 @@ test('X-4 logo en el shell: menú lateral en escritorio, barra superior en table
   const ancho = page.viewportSize().width
   if (ancho >= 1024) {
     await expect(page.locator('.sidebar-header svg.logo-mark')).toBeVisible()
-    await expect(page.locator('.sidebar-header .brand__name')).toHaveText('TutorPro')
+    await expect(page.locator('.sidebar-header .brand__name')).toHaveText('CDITutorPro')
   } else {
     await expect(page.locator('.topbar svg.logo-mark')).toBeVisible()
     await page.getByRole('button', { name: 'Abrir menú' }).click()

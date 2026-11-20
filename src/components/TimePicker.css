@@ -26,7 +26,7 @@
 
 .time-picker-input:focus-within {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -125,7 +125,7 @@
 
 .time-picker-option.selected {
   background: var(--accent-light);
-  color: #8b5cf6;
+  color: var(--accent-text);
   font-weight: 600;
   position: relative;
 }
@@ -137,7 +137,7 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #8b5cf6;
+  background: var(--accent-solid);
 }
 
 /* Asegurar que el scroll se posicione en el valor seleccionado */
@@ -163,6 +163,6 @@
 
 /* Mejorar la visualización de las opciones seleccionadas */
 .time-picker-option.selected {
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px rgba(177, 29, 37, 0.2);
 }
 
