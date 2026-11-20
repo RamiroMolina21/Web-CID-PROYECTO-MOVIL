@@ -65,7 +65,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -80,7 +80,7 @@
 
 .date-input:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -163,13 +163,13 @@
 
 .horario-card:hover {
   background: var(--bg-hover);
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .horario-card.selected {
-  border-color: #8b5cf6;
+  border-color: var(--accent);
   background: var(--accent-hover-bg);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -248,7 +248,7 @@
 
 .fechas-recurrentes-hint {
   font-size: 0.75rem;
-  color: #8b5cf6;
+  color: var(--accent-text);
   font-weight: 500;
   margin-top: 0.25rem;
   font-style: italic;
@@ -321,7 +321,7 @@
 }
 
 .tutoria-agregar-estudiante-btn {
-  background: #8b5cf6;
+  background: var(--accent-solid);
   color: white;
   border: none;
   border-radius: 8px;
@@ -335,9 +335,9 @@
 }
 
 .tutoria-agregar-estudiante-btn:hover {
-  background: #7c3aed;
+  background: var(--accent-solid);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(177, 29, 37, 0.3);
 }
 
 .tutoria-agregar-estudiante-btn:active {

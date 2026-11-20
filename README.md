@@ -1,4 +1,4 @@
-# TutorPro - Sistema de Gestión de Tutorías
+# CDITutorPro - Sistema de Gestión de Tutorías
 
 Sistema web completo para la gestión de tutorías, horarios y estudiantes.
 

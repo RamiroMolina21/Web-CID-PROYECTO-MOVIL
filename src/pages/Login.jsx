@@ -1,19 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { ApiError } from '../lib/apiClient'
 import { homePorRol } from '../lib/roles'
-import { esCuentaDesactivada, MENSAJE_DESACTIVADA } from '../lib/session'
+import { esCuentaDesactivada, MENSAJE_DESACTIVADA, MENSAJE_CONTRASENA_CAMBIADA } from '../lib/session'
 import Icon from '../components/ui/Icon'
-import Logo from '../components/ui/Logo'
-import cecarLogo from '../img/cecarlogo.png'
+import cdiLogo from '../img/cdi-logo-2022.png'
 import './Login.css'
 
 const MOTIVOS = {
   expirada: 'Tu sesión ha expirado. Inicia sesión de nuevo.',
-  'sin-acceso': 'Tu cuenta no tiene acceso a TutorPro.',
+  'sin-acceso': 'Tu cuenta no tiene acceso a CDITutorPro.',
   desactivada: MENSAJE_DESACTIVADA,
+  'contrasena-cambiada': MENSAJE_CONTRASENA_CAMBIADA,
+  restablecida: 'Contraseña restablecida. Inicia sesión con tu nueva contraseña.',
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -32,7 +33,7 @@ const mensajeDeError = (err) => {
       case 401:
         return 'Correo o contraseña incorrectos.'
       case 403:
-        return esCuentaDesactivada(err) ? MENSAJE_DESACTIVADA : 'Tu cuenta no tiene acceso a TutorPro.'
+        return esCuentaDesactivada(err) ? MENSAJE_DESACTIVADA : 'Tu cuenta no tiene acceso a CDITutorPro.'
       case 429:
         return null // se muestra con cuenta atrás
       default:
@@ -56,10 +57,11 @@ const Login = () => {
   const [params] = useSearchParams()
   const correoRef = useRef(null)
 
-  const motivo = MOTIVOS[params.get('motivo') || logoutReason]
+  const claveMotivo = params.get('motivo') || logoutReason
+  const motivo = MOTIVOS[claveMotivo]
 
   useEffect(() => {
-    document.title = 'Iniciar sesión · TutorPro'
+    document.title = 'Iniciar sesión · CDITutorPro'
   }, [])
 
   // Cuenta atrás tras 429
@@ -114,13 +116,15 @@ const Login = () => {
       </button>
       <main className="login-card">
         <div className="login-header">
-          <Logo as="h1" layout="column" size={64} className="login-brand" />
+          {/* Logo oficial del Centro de Idiomas, sin alterar (292×63; se muestra a 2× de densidad máxima) */}
+          <img src={cdiLogo} alt="CDI · Centro de Idiomas · CECAR" className="cdi-logo" width="292" height="63" decoding="async" />
+          <h1 className="login-title"><span className="brand__cdi">CDI</span>TutorPro</h1>
           <p>Agenda y gestiona tus tutorías</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form" noValidate>
           {motivo && !error && espera === 0 && (
-            <div className="info-message" role="status">{motivo}</div>
+            <div className={claveMotivo === 'restablecida' ? 'success-message' : 'info-message'} role="status">{motivo}</div>
           )}
           {error && (
             <div className="error-message" role="alert">{error}</div>
@@ -178,6 +182,7 @@ const Login = () => {
               </button>
             </div>
             {fieldErrors.contrasena && <p className="field-error" id="contrasena-error">{fieldErrors.contrasena}</p>}
+            <Link to="/olvide-contrasena" className="forgot-link">¿Olvidaste tu contraseña?</Link>
           </div>
 
           <button type="submit" className="login-button" disabled={bloqueado} aria-busy={loading}>
@@ -185,10 +190,8 @@ const Login = () => {
           </button>
         </form>
 
-        {/* La institución respalda el producto: su logo se mantiene, sin alterarlo, como sello en el pie */}
-        <div className="login-footer login-institution">
-          <img src={cecarLogo} alt="Corporación Universitaria del Caribe – CECAR" className="institution-logo" width="56" height="56" />
-          <p>Sistema de tutorías de la Corporación Universitaria del Caribe</p>
+        <div className="login-footer">
+          <p>Sistema de tutorías del Centro de Idiomas · Corporación Universitaria del Caribe – CECAR</p>
         </div>
       </main>
     </div>

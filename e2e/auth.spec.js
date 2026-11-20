@@ -54,7 +54,7 @@ test('credenciales incorrectas → 401', async ({ page }) => {
 test('Estudiante sin acceso → 403', async ({ page }) => {
   requireRole(test, 'estudiante')
   await loginUI(page, 'estudiante')
-  await expect(page.getByRole('alert')).toContainText('Tu cuenta no tiene acceso a TutorPro.')
+  await expect(page.getByRole('alert')).toContainText('Tu cuenta no tiene acceso a CDITutorPro.')
 })
 
 test('token manipulado → vuelve al login con motivo', async ({ page }) => {

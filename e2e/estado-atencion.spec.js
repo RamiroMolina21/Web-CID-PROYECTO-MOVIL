@@ -106,7 +106,7 @@ test.describe('U-E cuentas activas e inactivas [PRUEBA]', () => {
     await expectAccessible(page)
   })
 
-  test('Auxiliar: activa/desactiva solo Estudiantes', async ({ page }) => {
+  test('Auxiliar: activa/desactiva solo Estudiantes; al personal solo lo edita', async ({ page }) => {
     requireRole(test, 'auxiliar')
     await login(page, 'auxiliar')
     await page.goto('/estudiantes')
@@ -114,7 +114,9 @@ test.describe('U-E cuentas activas e inactivas [PRUEBA]', () => {
     const tarjetas = page.locator('.estudiante-card')
     await expect(tarjetas).toHaveCount(2)
     await expect(tarjetas.filter({ hasText: `Núñez ${sello}` }).getByRole('button', { name: /Desactivar/ })).toHaveCount(1)
-    await expect(tarjetas.filter({ hasText: `Estado ${sello}` }).getByRole('button', { name: /Desactivar|Activar|Editar|Eliminar/ })).toHaveCount(0)
+    const personal = tarjetas.filter({ hasText: `Estado ${sello}` })
+    await expect(personal.getByRole('button', { name: /Desactivar|Activar|Eliminar/ })).toHaveCount(0)
+    await expect(personal.getByRole('button', { name: /Editar/ })).toHaveCount(1)
   })
 
   test('cuenta desactivada: el login lo explica y una sesión abierta se cierra con ese motivo', async ({ page }) => {

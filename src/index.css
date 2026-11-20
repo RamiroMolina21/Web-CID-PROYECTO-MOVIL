@@ -18,11 +18,11 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 1px 4px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.1);
-  --accent: #7b42f6;
-  --accent-secondary: #6366f1;
-  --accent-light: #ede9fe;
-  --accent-hover-bg: #f5f3ff;
-  --accent-text: #7c3aed;
+  --accent: #b11d25;            /* rojo CDI (barra de la web oficial): bordes, relleno de medidores */
+  --accent-secondary: #00529c;  /* azul CECAR (burbuja y sello del logo) */
+  --accent-light: #fbe3e4;
+  --accent-hover-bg: #fdf1f1;
+  --accent-text: #b11d25;       /* 6,8:1 sobre blanco; 6,2:1 sobre --accent-hover-bg */
   --error-bg: #fee2e2;
   --error-border: #fecaca;
   --error-text: #dc2626;
@@ -33,7 +33,7 @@
   --scrollbar-thumb: #d1d5db;
   --chart-grid: #f0f0f0;
   --overlay: rgba(0, 0, 0, 0.4);
-  --focus-ring: rgba(123, 66, 246, 0.1);
+  --focus-ring: rgba(0, 82, 156, 0.18);
   --modal-bg: #ffffff;
   --modal-text: #111827;
   --modal-border: #e5e7eb;
@@ -63,11 +63,11 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 1px 4px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.5);
-  --accent: #818cf8;
-  --accent-secondary: #6366f1;
-  --accent-light: #312e81;
-  --accent-hover-bg: #1e1b4b;
-  --accent-text: #a78bfa;
+  --accent: #ff8a8a;            /* 6,4:1 sobre --bg-card oscuro */
+  --accent-secondary: #60a5fa;
+  --accent-light: #4a1518;
+  --accent-hover-bg: #3a1215;
+  --accent-text: #ff8a8a;
   --error-bg: #450a0a;
   --error-border: #7f1d1d;
   --error-text: #fca5a5;
@@ -78,7 +78,7 @@
   --scrollbar-thumb: #475569;
   --chart-grid: #334155;
   --overlay: rgba(0, 0, 0, 0.65);
-  --focus-ring: rgba(129, 140, 248, 0.2);
+  --focus-ring: rgba(96, 165, 250, 0.3);
   --modal-bg: #2d2d2d;
   --modal-text: #ffffff;
   --modal-border: #404040;
@@ -160,8 +160,13 @@ textarea::placeholder {
 /* ---------- Tokens añadidos (migración MAUI → web). No alteran los existentes. ---------- */
 :root {
   --sidebar-width: 280px;
-  --accent-solid: #7b42f6;          /* fondo de botón/ítem activo con texto blanco (≥4.5:1) */
-  --accent-solid-hover: #6a32e4;
+  --accent-solid: #b11d25;          /* rojo CDI: botón/ítem activo con texto blanco (6,8:1) */
+  --accent-solid-hover: #8f171e;
+  /* Azul CECAR: foco, enlaces e información (distinto del rojo primario y del rojo de error) */
+  --focus-color: #00529c;
+  --info-bg: #e8f0f8;
+  --info-text: #00529c;
+  --brand-blue: #00529c;
   --success-bg: #dcfce7;
   --success-text: #166534;
   --success-dot: #16a34a;
@@ -178,8 +183,12 @@ textarea::placeholder {
 }
 
 [data-theme='dark'] {
-  --accent-solid: #4f46e5;
-  --accent-solid-hover: #4338ca;
+  --accent-solid: #b11d25;
+  --accent-solid-hover: #c42a32;   /* blanco encima 5,6:1 */
+  --focus-color: #60a5fa;
+  --info-bg: #0c2a4a;
+  --info-text: #93c5fd;
+  --brand-blue: #60a5fa;
   --success-bg: #14532d;
   --success-text: #bbf7d0;
   --success-dot: #4ade80;
@@ -202,7 +211,7 @@ html {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }
 

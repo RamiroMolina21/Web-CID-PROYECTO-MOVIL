@@ -20,6 +20,19 @@ export const authService = {
   /** PUT /Auth/contrasena → 204. 400 con `message`/`errors`, 401, 429 (5 intentos / 15 min por usuario). */
   cambiarContrasena: (contrasenaActual, contrasenaNueva) =>
     request('/Auth/contrasena', { method: 'PUT', body: { contrasenaActual, contrasenaNueva } }),
+
+  // ---- Recuperación de contraseña (públicos, sin Authorization) ----
+  /** POST /Auth/olvide-contrasena → 200 { message } siempre (anti-enumeración); 400 correo inválido; 429 + Retry-After. */
+  olvideContrasena: (correo) =>
+    request('/Auth/olvide-contrasena', { method: 'POST', body: { correo }, auth: false }),
+
+  /** GET /Auth/restablecer-contrasena/validar?token= → 200 { valido, correo (enmascarado), expiraEn } | 400 { message }. */
+  validarRestablecimiento: (token, signal) =>
+    request(`/Auth/restablecer-contrasena/validar?token=${enc(token)}`, { auth: false, signal }),
+
+  /** POST /Auth/restablecer-contrasena { token, contrasenaNueva } → 204; 400 token o política (errors.ContrasenaNueva); 429. */
+  restablecerContrasena: (token, contrasenaNueva) =>
+    request('/Auth/restablecer-contrasena', { method: 'POST', body: { token, contrasenaNueva }, auth: false }),
 }
 
 // ==================== USUARIOS ====================

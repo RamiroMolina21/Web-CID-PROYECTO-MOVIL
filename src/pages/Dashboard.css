@@ -13,7 +13,7 @@
   --viz-finalizada: #0d9488;
   --viz-pendiente: #d97706;
   --viz-cancelada: #64748b;
-  --viz-bar: var(--accent-solid);
+  --viz-bar: #00529c; /* barras de una serie: azul CECAR (el rojo se leería como "malo") */
   font-variant-numeric: tabular-nums;
 }
 
@@ -21,7 +21,7 @@
   --viz-finalizada: #0f9f8c;
   --viz-pendiente: #c98500;
   --viz-cancelada: #94a3b8;
-  --viz-bar: #818cf8;
+  --viz-bar: #60a5fa;
 }
 
 .dash .page-head {
@@ -292,12 +292,12 @@
 .att-item--media .att-item__icon,
 .att-item--media .att-item__sev { background: var(--warning-bg); color: var(--warning-text); }
 .att-item--info .att-item__icon,
-.att-item--info .att-item__sev { background: var(--accent-hover-bg); color: var(--accent-text); }
+.att-item--info .att-item__sev { background: var(--info-bg); color: var(--info-text); }
 
 [data-theme='dark'] .att-item--info .att-item__icon,
 [data-theme='dark'] .att-item--info .att-item__sev {
-  background: var(--accent-light);
-  color: #e0e7ff;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 
 .att-detail {
@@ -1260,4 +1260,9 @@
   .segmented--sm button {
     min-height: 44px;
   }
+}
+
+/* Objetivo táctil ≥44 px en móvil y tableta */
+@media (max-width: 1023px) {
+  .att-detail__action { min-height: 44px; display: inline-flex; align-items: center; }
 }

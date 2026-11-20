@@ -120,3 +120,26 @@
 
 
 
+
+/* Contraseña con botón para mostrar/ocultar */
+.fd-password {
+  position: relative;
+}
+
+.fd-password .form-input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.fd-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  transform: translateY(-50%);
+}
+
+.fd-ayuda {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}

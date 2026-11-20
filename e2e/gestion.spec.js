@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 import {
   apiComo,
   creds,
+  expectAccessible,
   expectNoHorizontalScroll,
   fechaEnDias,
   limpiarPrueba,
@@ -26,12 +27,36 @@ test('G-E1 dashboard carga datos tras el login (sin 401) @responsive', async ({ 
   await expectNoHorizontalScroll(page)
 })
 
-test('G-E5 Auxiliar no ve acciones sobre docentes', async ({ page }) => {
+test('G-E5 Auxiliar crea personal solo como Docente o Tutor', async ({ page }) => {
   requireRole(test, 'auxiliar')
   await login(page, 'auxiliar')
   await page.goto('/estudiantes')
   await expect(page.getByRole('heading', { name: 'Usuarios', level: 1 })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Nuevo Docente' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Nuevo Docente' })).toBeVisible()
+  await page.getByRole('button', { name: 'Nuevo Tutor' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Nuevo Tutor' })
+  await expect(dlg).toBeVisible()
+  const rol = dlg.getByLabel('Rol *')
+  await expect(rol).toHaveValue('Tutor')
+  // Nunca Administrador ni Auxiliar en el selector del Auxiliar
+  await expect(rol.locator('option')).toHaveText(['Docente', 'Tutor'])
+  await rol.selectOption('Docente')
+  await expect(page.getByRole('dialog', { name: 'Nuevo Docente' })).toBeVisible()
+  await expectAccessible(page)
+})
+
+test('G-E5b Administrador: «Nuevo Tutor» preselecciona el rol Tutor', async ({ page }) => {
+  requireRole(test, 'admin')
+  await login(page, 'admin')
+  await page.goto('/estudiantes')
+  await page.getByRole('button', { name: 'Nuevo Tutor' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Nuevo Tutor' })
+  await expect(dlg).toBeVisible()
+  await expect(dlg.getByLabel('Rol *')).toHaveValue('Tutor')
+  await expect(dlg.getByLabel('Rol *').locator('option')).toHaveText(['Docente', 'Tutor', 'Administrador', 'Auxiliar'])
+  await dlg.getByRole('button', { name: /Cancelar/ }).click()
+  await page.getByRole('button', { name: 'Nuevo Docente' }).click()
+  await expect(page.getByRole('dialog', { name: 'Nuevo Docente' }).getByLabel('Rol *')).toHaveValue('Docente')
 })
 
 test('G-E7 Admin no entra a las vistas personales', async ({ page }) => {
@@ -213,15 +238,15 @@ test.describe.serial('Auxiliar', () => {
     }
   })
 
-  test('solo gestiona Estudiantes: sin acciones sobre el personal; crea y borra un Estudiante [PRUEBA]', async ({ page }) => {
+  test('sobre el personal solo edita (sin eliminar ni desactivar); crea y borra un Estudiante [PRUEBA]', async ({ page }) => {
     await login(page, 'auxiliar')
     await page.goto('/estudiantes')
-    await expect(page.getByRole('button', { name: 'Nuevo Docente' })).toHaveCount(0)
     // La lista se pinta por lotes: se busca al docente como lo haría el usuario
     await page.getByPlaceholder(/Buscar por nombre/).fill(process.env.E2E_DOCENTE_EMAIL)
     const docente = page.locator('.estudiante-card').filter({ hasText: process.env.E2E_DOCENTE_EMAIL })
     await expect(docente).toHaveCount(1)
-    await expect(docente.getByRole('button', { name: /Editar|Eliminar/ })).toHaveCount(0)
+    await expect(docente.getByRole('button', { name: /Editar/ })).toHaveCount(1)
+    await expect(docente.getByRole('button', { name: /Eliminar|Desactivar|Activar/ })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Nuevo Estudiante' }).click()
     await page.getByLabel('Nombres *').fill(`${PREFIJO} Aux`)
@@ -251,12 +276,45 @@ test.describe.serial('Auxiliar', () => {
     await expect(card).toHaveCount(0)
   })
 
-  test('si forzara crear personal, el backend responde 403 con mensaje', async () => {
-    const r = await aux.post('/Usuario', {
-      nombres: `${PREFIJO} Forzado`, apellidos: marca, correo: `prueba.forzado.${marca}@cecar.test`, contrasena: `Forzado-${marca}1`, rolId: 3,
-    })
-    expect(r.status).toBe(403)
-    expect(r.body.message).toMatch(/Solo un Administrador/i)
+  test('crea un Tutor [PRUEBA] desde la UI y lo edita', async ({ page }) => {
+    await login(page, 'auxiliar')
+    await page.goto('/estudiantes')
+    await page.getByRole('button', { name: 'Nuevo Tutor' }).click()
+    const dlg = page.getByRole('dialog', { name: 'Nuevo Tutor' })
+    await dlg.getByLabel('Nombre *').fill(`${PREFIJO} AuxTutor`)
+    await dlg.getByLabel('Apellido *').fill(`Personal ${marca}`)
+    await dlg.getByLabel('Correo *').fill(`prueba.auxtutor.${marca}@cecar.test`)
+    await dlg.getByLabel('Contraseña *').fill(`AuxTutor-${marca}1`)
+    const [crear] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith('/api/Usuario') && r.request().method() === 'POST'),
+      dlg.getByRole('button', { name: /Guardar/ }).click(),
+    ])
+    expect(crear.status()).toBe(201)
+
+    await page.getByPlaceholder(/Buscar por nombre/).fill(`Personal ${marca}`)
+    const card = page.locator('.estudiante-card').filter({ hasText: `Personal ${marca}` })
+    await expect(card).toHaveCount(1)
+    await expect(card.getByRole('button', { name: /Eliminar|Desactivar/ })).toHaveCount(0)
+    await card.getByRole('button', { name: /Editar/ }).click()
+    const editar = page.getByRole('dialog', { name: 'Editar Tutor' })
+    await expect(editar.getByLabel('Contraseña', { exact: true })).toHaveValue('')
+    await editar.getByLabel('Apellido *').fill(`Personal ${marca} Editado`)
+    const [put] = await Promise.all([
+      page.waitForResponse((r) => /\/api\/Usuario\/\d+$/.test(r.url()) && r.request().method() === 'PUT'),
+      editar.getByRole('button', { name: /Guardar/ }).click(),
+    ])
+    expect(put.status()).toBe(200)
+    await expect(page.locator('.estudiante-card').filter({ hasText: 'Editado' })).toHaveCount(1)
+  })
+
+  test('si forzara crear un Administrador o Auxiliar, el backend responde 403 con mensaje', async () => {
+    for (const rolId of [1, 5]) {
+      const r = await aux.post('/Usuario', {
+        nombres: `${PREFIJO} Forzado`, apellidos: marca, correo: `prueba.forzado${rolId}.${marca}@cecar.test`, contrasena: `Forzado-${marca}1`, rolId,
+      })
+      expect(r.status).toBe(403)
+      expect(r.body.message).toBeTruthy()
+    }
   })
 
   test('puede finalizar una tutoría [PRUEBA] con calificación', async ({ page }) => {

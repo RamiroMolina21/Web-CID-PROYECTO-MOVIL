@@ -5,63 +5,12 @@ import { useApiQuery } from '../hooks/useApiQuery'
 import { useToast } from '../components/ui/Feedback'
 import { PageHeader, LoadingState, ErrorState, Spinner } from '../components/ui/States'
 import Icon from '../components/ui/Icon'
+import { PasswordField, ListaRequisitos, requisitosContrasena } from '../components/ui/PasswordField'
 import { authService } from '../services/apiService'
 import { ApiError, getErrorMessage } from '../lib/apiClient'
 import { formatFecha } from '../lib/fechas'
 import { iniciales, nombreCompleto, normalizarRol, getRol } from '../lib/roles'
 import './Configuracion.css'
-
-// Contrato PUT /Auth/contrasena: 8–72 caracteres (≤ 72 bytes UTF-8), no solo espacios,
-// distinta de la actual y del correo (sin distinguir mayúsculas).
-const MIN = 8
-const MAX_BYTES = 72
-const bytes = (s) => new TextEncoder().encode(s).length
-
-const requisitos = (nueva, actual, correo) => [
-  { id: 'min', ok: nueva.length >= MIN, texto: `Al menos ${MIN} caracteres` },
-  { id: 'max', ok: nueva.length > 0 && bytes(nueva) <= MAX_BYTES, texto: `Máximo ${MAX_BYTES} caracteres` },
-  { id: 'esp', ok: nueva.trim().length > 0, texto: 'No puede ser solo espacios' },
-  { id: 'act', ok: nueva.length > 0 && nueva !== actual, texto: 'Distinta de la contraseña actual' },
-  {
-    id: 'cor',
-    ok: nueva.length > 0 && nueva.trim().toLowerCase() !== (correo || '').trim().toLowerCase(),
-    texto: 'Distinta de tu correo',
-  },
-]
-
-const PasswordField = ({ id, label, value, onChange, autoComplete, error, describedBy, inputRef }) => {
-  const [visible, setVisible] = useState(false)
-  const errorId = `${id}-error`
-  return (
-    <div className="field">
-      <label className="field__label" htmlFor={id}>{label}</label>
-      <div className="password-field">
-        <input
-          ref={inputRef}
-          id={id}
-          className="input"
-          type={visible ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          aria-invalid={!!error}
-          aria-describedby={[error ? errorId : null, describedBy].filter(Boolean).join(' ') || undefined}
-          spellCheck={false}
-        />
-        <button
-          type="button"
-          className="icon-btn password-field__toggle"
-          onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? `Ocultar ${label.toLowerCase()}` : `Mostrar ${label.toLowerCase()}`}
-          aria-pressed={visible}
-        >
-          <Icon name={visible ? 'eyeOff' : 'eye'} size={18} />
-        </button>
-      </div>
-      {error && <p className="field__error" id={errorId}>{error}</p>}
-    </div>
-  )
-}
 
 const CambiarContrasena = ({ correo }) => {
   const toast = useToast()
@@ -75,7 +24,7 @@ const CambiarContrasena = ({ correo }) => {
   const [errorGeneral, setErrorGeneral] = useState(null)
   const [enviando, setEnviando] = useState(false)
 
-  const lista = useMemo(() => requisitos(nueva, actual, correo), [nueva, actual, correo])
+  const lista = useMemo(() => requisitosContrasena(nueva, { actual, correo }), [nueva, actual, correo])
   const cumple = lista.every((r) => r.ok)
 
   const limpiar = (campo) => {
@@ -170,15 +119,7 @@ const CambiarContrasena = ({ correo }) => {
           />
         </div>
 
-        <ul className="requisitos" id={reqId} aria-label="Requisitos de la nueva contraseña">
-          {lista.map((r) => (
-            <li key={r.id} className={r.ok ? 'is-ok' : ''}>
-              <Icon name={r.ok ? 'checkCircle' : 'circle'} size={16} />
-              <span>{r.texto}</span>
-              <span className="sr-only">{r.ok ? ' (cumplido)' : ' (pendiente)'}</span>
-            </li>
-          ))}
-        </ul>
+        <ListaRequisitos id={reqId} lista={lista} />
 
         {errorGeneral && (
           <p className="banner banner--error" role="alert">

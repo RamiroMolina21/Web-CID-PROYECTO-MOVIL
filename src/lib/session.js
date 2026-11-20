@@ -44,3 +44,11 @@ export const msHastaExpirar = (expiresAt) => {
  */
 export const esCuentaDesactivada = (err) => /cuenta est[aá] desactivada/i.test(err?.message || '')
 export const MENSAJE_DESACTIVADA = 'La cuenta está desactivada. Contacte con un administrador.'
+
+// 401 del backend cuando la contraseña se restableció o cambió después de emitir el token
+export const esContrasenaCambiada = (err) => /contrase[nñ]a de la cuenta se cambi[oó]/i.test(err?.message || '')
+export const MENSAJE_CONTRASENA_CAMBIADA = 'La contraseña de la cuenta se cambió. Inicia sesión de nuevo.'
+
+/** Motivo de cierre de sesión para un 401. */
+export const motivo401 = (err) =>
+  esCuentaDesactivada(err) ? 'desactivada' : esContrasenaCambiada(err) ? 'contrasena-cambiada' : 'expirada'
