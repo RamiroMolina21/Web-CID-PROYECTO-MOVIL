@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTheme } from '../../context/ThemeContext'
+import Hint from '../../components/ui/Hint'
 import { formatNum } from './metricas'
 
 // Paleta validada con dataviz/validate_palette.js (CVD, banda de luminosidad y contraste ≥3:1 sobre la tarjeta).
@@ -69,17 +70,20 @@ const Tendencia = ({ tendencia }) => {
             </li>
           ))}
         </ul>
+        <span className="trend__tools">
+        <Hint label="Actividad de tutorías">
+          {total === 0
+            ? 'No hubo tutorías en los últimos 12 meses.'
+            : `${formatNum(total)} tutorías en los últimos 12 meses. Mes con más actividad: ${pico.etiquetaLarga} (${formatNum(pico.total)}).`}
+        </Hint>
         <div className="segmented segmented--sm" role="group" aria-label="Vista de la actividad mensual">
           <button type="button" aria-pressed={vista === 'grafica'} onClick={() => setVista('grafica')}>Gráfica</button>
           <button type="button" aria-pressed={vista === 'tabla'} onClick={() => setVista('tabla')}>Tabla</button>
         </div>
+        </span>
       </div>
 
-      <p className="trend__summary">
-        {total === 0
-          ? 'No hubo tutorías en los últimos 12 meses.'
-          : `${formatNum(total)} tutorías en los últimos 12 meses. Mes con más actividad: ${pico.etiquetaLarga} (${formatNum(pico.total)}).`}
-      </p>
+
 
       {vista === 'grafica' ? (
         <div className="trend__chart" aria-hidden="true">

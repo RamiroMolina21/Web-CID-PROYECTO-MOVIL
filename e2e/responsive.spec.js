@@ -95,13 +95,19 @@ for (const vista of VISTAS) {
 
       await page.goto('/horarios')
       await page.getByRole('button', { name: 'Nuevo Horario' }).click()
-      await expect(page.getByRole('heading', { name: 'Nuevo Horario' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Nuevo horario' })).toBeVisible()
       await comprobar(page, 'admin nuevo horario')
       // Acciones visibles sin desplazar el modal (pie fijo en móvil)
       await expect(page.getByRole('button', { name: /Guardar/ })).toBeInViewport()
+      // Modo "Repetir este horario": rango, días y franjas sin desbordar (una columna en móvil)
+      await page.getByRole('switch', { name: 'Repetir este horario' }).check()
+      await page.locator('.fh-dia').filter({ hasText: 'Martes' }).click()
+      await expect(page.getByLabel('Martes: hora de inicio')).toBeVisible()
+      await comprobar(page, 'admin nuevo horario recurrente')
+      await expect(page.getByRole('button', { name: /Guardar/ })).toBeInViewport()
 
       await page.goto('/horarios')
-      const etiqueta = page.locator('.month-horario-label, .month-tutoria-label').first()
+      const etiqueta = page.locator('.cal-evento').first()
       if (await etiqueta.count()) {
         await etiqueta.click()
         await expect(page.getByRole('dialog')).toBeVisible()

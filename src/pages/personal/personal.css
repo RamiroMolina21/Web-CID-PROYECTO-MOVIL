@@ -773,3 +773,18 @@
 .resumen dt {
   color: var(--text-label);
 }
+
+.agenda-disp {
+  padding: 1.25rem;
+}
+
+/* Cupos máximos (asistente de agendar): campo numérico corto */
+.input.input--cupos {
+  max-width: 10rem;
+}
+
+@media (max-width: 480px) {
+  .input.input--cupos {
+    max-width: none;
+  }
+}

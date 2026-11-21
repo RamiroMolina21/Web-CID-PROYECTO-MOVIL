@@ -93,7 +93,7 @@ export const auditarPagina = async (page) =>
       // Enlace estirado: su ::after cubre toda la fila (el objetivo real es la tarjeta)
       if (el.classList.contains('stretched-link')) continue
       // Etiquetas dentro de celdas del calendario mensual: mínimo WCAG 2.5.8 (24 px), no 44 (la celda no da más)
-      if (el.matches('.month-horario-label, .month-tutoria-label')) { if (el.getBoundingClientRect().height >= 24) continue }
+      if (el.matches('.cal-evento--mes, .cal-mes__mas')) { if (el.getBoundingClientRect().height >= 24) continue }
       // Enlaces dentro de texto corrido: excepción de WCAG 2.5.8 (en línea con el texto)
       if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && el.closest('p, li > span, td')) continue
       const r = el.getBoundingClientRect()

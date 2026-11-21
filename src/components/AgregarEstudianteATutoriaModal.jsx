@@ -11,7 +11,8 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
   const [selectedEstudianteId, setSelectedEstudianteId] = useState('')
   const [loading, setLoading] = useState(false)
   const [estudiantesTutoria, setEstudiantesTutoria] = useState([])
-  const [cuposDisponibles, setCuposDisponibles] = useState(5)
+  // Capacidad efectiva: tutoria.cupos → cupos del horario (antiguos) → null = sin límite
+  const [cuposDisponibles, setCuposDisponibles] = useState(tutoria?.cupos ?? null)
 
   if (!tutoria) return null
 
@@ -54,15 +55,15 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
         return hId && hId.toString() === horarioId.toString()
       })
       if (horario) {
-        setCuposDisponibles(horario.cuposDisponibles || 5)
+        setCuposDisponibles(tutoria?.cupos ?? horario.cuposDisponibles ?? null)
       }
     }
   }, [horarioId, horarios])
 
   // Calcular cupos disponibles
   const cuposOcupados = estudiantesTutoria.length
-  const available = cuposDisponibles - cuposOcupados
-  const isFull = available <= 0
+  const available = cuposDisponibles != null ? cuposDisponibles - cuposOcupados : null
+  const isFull = available != null && available <= 0
 
   // Filtrar estudiantes que ya están en la tutoría
   // Solo cuentas activas (asignar una desactivada → 400 en el servidor)
@@ -144,7 +145,7 @@ const AgregarEstudianteATutoriaModal = ({ tutoria, onClose, onSuccess }) => {
           </div>
 
           <div className="agregar-estudiante-info">
-            <p>Cupos disponibles: <strong>{available}/{cuposDisponibles}</strong></p>
+            <p>{cuposDisponibles != null ? <>Cupos disponibles: <strong>{available}/{cuposDisponibles}</strong></> : 'Sin límite de cupos'}</p>
             <p className="agregar-estudiante-hint">
               Estudiantes ya agendados: {cuposOcupados}
             </p>

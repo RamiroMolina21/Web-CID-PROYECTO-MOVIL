@@ -250,7 +250,12 @@ export const calcularKpis = (tutorias, ahora) => {
   const inscritosConCupo = conCupo.reduce((s, t) => s + Math.min(t.inscritos, t.cupos), 0)
   const cuposTotales = conCupo.reduce((s, t) => s + t.cupos, 0)
 
+  // Pendientes cuya sesión ya terminó (misma regla que "vencida" en clasificarTutorias)
+  const vencidas = tutorias.filter((t) => t.vencida)
+  const vencidasHace7 = vencidas.filter((t) => t.fin < hace7).length
+
   return {
+    vencidas: { valor: vencidas.length, masDe7Dias: vencidasHace7 },
     proximas7: {
       valor: proximas7.length,
       inscritos: proximas7.reduce((s, t) => s + t.inscritos, 0),
@@ -418,6 +423,21 @@ export const calcularCarga = ({ tutorias, personal, retroalimentaciones, desde }
         a.nombre.localeCompare(b.nombre, 'es')
     )
 }
+
+/**
+ * Los `n` docentes/tutores más relevantes para el resumen del dashboard.
+ * Criterio (visible en la interfaz): más tutorías realizadas en el periodo; a igualdad, mejor calificación
+ * y luego más tutorías próximas. Las filas son las de calcularCarga (mismas cifras que el listado completo).
+ */
+export const CRITERIO_TOP_DOCENTES = 'Más tutorías realizadas en el periodo'
+export const ordenarPorRelevancia = (filas) =>
+  [...filas].sort(
+    (a, b) =>
+      b.realizadas - a.realizadas ||
+      (b.calificacion ?? -1) - (a.calificacion ?? -1) ||
+      b.proximas - a.proximas ||
+      a.nombre.localeCompare(b.nombre, 'es')
+  )
 
 // ---------- Calidad ----------
 

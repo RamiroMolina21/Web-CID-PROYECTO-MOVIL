@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext'
 import { useToast, useConfirm } from './ui/Feedback'
 import Icon from './ui/Icon'
 import { ETIQUETA_ELIMINADO } from '../lib/usuarios'
+import { aulaTexto, tieneAula } from '../lib/aula'
 
 const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
   const { getDocenteById, tutorias, docentes, deleteTutoria, loadData } = useData()
@@ -108,8 +109,18 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
               <p className="horario-modal-date">{fechaFormateada}</p>
               <p className="horario-modal-capacity">
                 {(() => {
-                  const capacity = horario.cuposDisponibles || 5
+                  // Capacidad efectiva: cupos de la tutoría del horario → cupos del horario (antiguos) → sin límite
+                  const capacity = assignedTutorias.find((t) => t.cupos)?.cupos ?? horario.cuposDisponibles ?? null
                   const existingCount = todosEstudiantesIds.length
+                  if (capacity == null) {
+                    return (
+                      <span className="hd-capacity hd-capacity--libre">
+                        {assignedTutorias.length > 0
+                          ? `${existingCount} inscrito${existingCount !== 1 ? 's' : ''} · sin límite de cupos`
+                          : 'Sin tutoría agendada'}
+                      </span>
+                    )
+                  }
                   const available = capacity - existingCount
                   const tono = available <= 0 ? 'lleno' : available <= 2 ? 'pocos' : 'libre'
                   return (
@@ -176,18 +187,10 @@ const HorarioDetailModal = ({ horario, onClose, onEdit, onDelete }) => {
               <span>{horario.tipoClase}</span>
             </div>
           )}
-          {horario.salon && (
-            <div className="horario-detail-item">
-              <Icon name="building" size={18} className="horario-detail-icon" />
-              <span>{horario.salon}</span>
-            </div>
-          )}
-          {horario.cuposDisponibles && (
-            <div className="horario-detail-item">
-              <Icon name="users" size={18} className="horario-detail-icon" />
-              <span>{horario.cuposDisponibles} cupo{horario.cuposDisponibles > 1 ? 's' : ''} disponible{horario.cuposDisponibles > 1 ? 's' : ''}</span>
-            </div>
-          )}
+          <div className="horario-detail-item">
+            <Icon name="building" size={18} className="horario-detail-icon" />
+            <span className={tieneAula(horario.salon) ? undefined : 'aula-pendiente'}>{aulaTexto(horario.salon)}</span>
+          </div>
           {horario.sinDueno && (
             <div className="horario-detail-item">
               <Icon name="teacher" size={18} className="horario-detail-icon" />

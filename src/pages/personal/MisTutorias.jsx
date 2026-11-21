@@ -9,6 +9,7 @@ import { formatHora, formatRangoHoras, parseLocal } from '../../lib/fechas'
 import { getUserId, nombreCompleto, ROLES, tieneRol } from '../../lib/roles'
 import { nombreAsignado } from '../../lib/usuarios'
 import './personal.css'
+import { aulaLimpia, aulaTexto } from '../../lib/aula'
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -165,8 +166,9 @@ const MisTutorias = ({ grupo = 'pendiente' }) => {
                             ? formatRangoHoras(t.horarioHoraInicio, t.horarioHoraFin)
                             : formatHora(t.fechaTutoria)}
                         </span>
-                        {t.horarioEspacio && t.horarioEspacio !== 'N/A' && (
-                          <span className="meta__item"><Icon name="mapPin" size={16} />{t.horarioEspacio}</span>
+                        {/* Pendientes: "Aula por asignar" si falta; historial: solo si hubo aula */}
+                        {(grupo === 'pendiente' || aulaLimpia(t.horarioEspacio)) && (
+                          <span className="meta__item"><Icon name="mapPin" size={16} />{aulaTexto(t.horarioEspacio)}</span>
                         )}
                         <span className="meta__item">
                           <Icon name="users" size={16} />

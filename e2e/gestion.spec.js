@@ -122,61 +122,76 @@ test.describe.serial('Gestión con datos [PRUEBA]', () => {
     await expect(page.locator('input[name="titulo"]')).toHaveCount(0)
     await expect(page.getByLabel('Título')).toHaveCount(0)
 
-    await page.locator('input[name="fecha"]').fill(hoy)
-    await page.locator('input[name="fechaFin"]').fill(hoy)
-    const elegirHora = async (indice, hora, periodo) => {
-      await page.locator('.time-picker-input').nth(indice).click()
-      const drop = page.locator('.time-picker-dropdown')
-      await drop.locator('.time-picker-column').nth(0).locator('.time-picker-option', { hasText: new RegExp(`^${hora}$`) }).click()
-      await drop.locator('.time-picker-column').nth(1).locator('.time-picker-option', { hasText: /^00$/ }).click()
-      await drop.locator('.time-picker-column').nth(2).locator('.time-picker-option', { hasText: periodo }).click()
-      await page.getByRole('heading', { name: 'Nuevo Horario' }).click() // cierra el desplegable
-    }
-    await elegirHora(0, '10', 'a. m.')
-    await elegirHora(1, '10', 'a. m.')
-    // 10:00–10:00 no es válido: se corrige la hora de fin a 10:30
-    await page.locator('.time-picker-input').nth(1).click()
-    await page.locator('.time-picker-dropdown .time-picker-column').nth(1).locator('.time-picker-option', { hasText: /^30$/ }).click()
-    await page.getByRole('heading', { name: 'Nuevo Horario' }).click()
+    // Orden del formulario: 1. Fecha → 2. Horario → 3. Detalles; el foco empieza en la fecha
+    const dlgForm = page.getByRole('dialog', { name: 'Nuevo horario' })
+    await expect(dlgForm).toContainText('Configura la fecha, hora y disponibilidad de la sesión.')
+    const leyendas = await dlgForm.locator('legend').allTextContents()
+    expect(leyendas).toEqual(['1. Fecha de la sesión', '2. Horario', '3. Detalles de la sesión'])
+    await expect(page.locator('#fh-fecha')).toBeFocused()
+    await expect(page.getByRole('switch', { name: 'Repetir este horario' })).not.toBeChecked()
+    await expect(page.locator('#fh-fechaFin')).toHaveCount(0) // "Fecha de fin" solo al repetir
+    // Sin cupos en el horario: se definen al agendar la tutoría
+    await expect(dlgForm.getByLabel(/Cupos/)).toHaveCount(0)
+    await expect(page.locator('#horario-cupos')).toHaveCount(0)
 
-    // Cupos fuera de rango → error de validación local, sin llamar a la API
-    await page.locator('#horario-cupos').fill('0')
-    await page.locator('select[name="docenteId"]').selectOption(String(process.env.E2E_DOCENTE_ID || 18))
-    await page.locator('input[name="salon"]').fill(`${PREFIJO} Aula`)
+    // Errores junto a su campo y foco al primero (en orden visual: la fecha)
     const posts = []
     page.on('request', (r) => r.method() === 'POST' && r.url().endsWith('/api/Horario') && posts.push(r))
-    await page.getByRole('button', { name: /Guardar|Crear/ }).last().click()
-    // La validación nativa (min 1, max 1000, step 1) bloquea el envío; además hay validación en JS
-    expect(await page.locator('#horario-cupos').evaluate((e) => e.validity.valid)).toBe(false)
+    await page.getByRole('button', { name: /Guardar/ }).click()
+    await expect(page.locator('#fh-fecha-error')).toHaveText('Indica la fecha.')
+    await expect(page.locator('#fh-fecha')).toBeFocused()
+    await expect(page.locator('#fh-docenteId-error')).toHaveText('Elige el docente o tutor.')
+    await expectAccessible(page)
+
+    await page.locator('#fh-docenteId').selectOption(String(process.env.E2E_DOCENTE_ID || 18))
+    await page.locator('#fh-fecha').fill(hoy)
+    await page.locator('#fh-horaInicio').fill('10:00')
+    await page.locator('#fh-horaFin').fill('10:00')
+    await page.locator('#fh-salon').fill(`${PREFIJO} Aula`)
+    await page.getByRole('button', { name: /Guardar/ }).click()
+    // 10:00–10:00 no es válido: error en la hora de fin; se corrige a 10:30
+    await expect(page.locator('#fh-horaFin-error')).toHaveText('La hora de fin debe ser posterior a la de inicio.')
+    await expect(page.locator('#fh-horaFin')).toBeFocused()
+    await page.locator('#fh-horaFin').fill('10:30')
     expect(posts).toHaveLength(0)
 
-    await page.locator('#horario-cupos').fill('3')
     const [crear] = await Promise.all([
       page.waitForResponse((r) => r.url().endsWith('/api/Horario') && r.request().method() === 'POST'),
-      page.getByRole('button', { name: /Guardar|Crear/ }).last().click(),
+      page.getByRole('button', { name: /Guardar/ }).click(),
     ])
     expect(crear.status()).toBe(201)
     const creado = await crear.json()
-    expect(creado.cupos).toBe('3')
+    // Contrato: sin cupos en POST /Horario → se guarda "" (la web ya no los envía)
+    expect(JSON.parse(crear.request().postData() || '{}')).not.toHaveProperty('Cupos')
+    expect(creado.cupos ?? '').toBe('')
     // Título generado: "{espacio} · dd/MM/yyyy HH:mm–HH:mm"
     const [y, m, d] = hoy.split('-')
     expect(creado.titulo).toBe(`${PREFIJO} Aula · ${d}/${m}/${y} 10:00–10:30`)
-    const titulo = creado.titulo
+    let titulo = creado.titulo
 
-    // Editar desde el calendario: celda de hoy (vista Mes), etiqueta con el nombre del Docente
+    // Editar desde el calendario: vista Semana (por defecto), bloque de hoy con su franja y el Docente
     const abrirHorario = async () => {
-      await page.locator('.month-day-cell.today .month-horario-label').filter({ hasText: 'Laura' }).first().click()
+      await page.locator(`.cal-evento[data-fecha="${hoy}"]`).filter({ hasText: 'Laura' }).filter({ hasText: /^.*10:00 – 10:\d\d/ }).first().click()
       await expect(page.locator('.horario-modal-title')).toHaveText(titulo)
     }
     await abrirHorario()
     await page.getByTitle('Editar').click()
-    await page.locator('#horario-cupos').fill('4')
+    // Editar una sesión: sin selector de modo, título actual visible
+    await expect(page.getByRole('heading', { name: 'Editar horario' })).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Repetir este horario' })).toHaveCount(0)
+    await expect(page.locator('.fh__subtitulo')).toContainText(titulo)
+    await expect(page.locator('#horario-cupos')).toHaveCount(0)
+    await page.locator('#fh-horaFin').fill('10:45')
     const [editar] = await Promise.all([
       page.waitForResponse((r) => new RegExp(`/api/Horario/${creado.idHorario}$`).test(r.url()) && r.request().method() === 'PUT'),
       page.getByRole('button', { name: /Guardar|Actualizar/ }).last().click(),
     ])
     expect(editar.status()).toBe(200)
-    expect((await editar.json()).cupos).toBe('4')
+    expect(JSON.parse(editar.request().postData() || '{}')).not.toHaveProperty('Cupos')
+    // El título generado se regenera con la nueva hora de fin
+    const editado = await editar.json()
+    expect(editado.titulo).toBe(`${PREFIJO} Aula · ${d}/${m}/${y} 10:00–10:45`)
+    titulo = editado.titulo
 
     // Eliminar con el diálogo de confirmación accesible
     await abrirHorario()
@@ -216,7 +231,7 @@ test.describe.serial('Auxiliar', () => {
     horario = h.body
     const t = await admin.post('/Tutoria', {
       idioma: 'Inglés', nivel: 'A1', tema: `${PREFIJO} Aux ${marca}`, modalidad: 'Virtual', estado: 'Pendiente',
-      fechaTutoria: `${fecha}T07:00:00`, usuarioId: Number(process.env.E2E_DOCENTE_ID || 18), horarioId: horario.idHorario,
+      fechaTutoria: `${fecha}T07:00:00`, usuarioId: Number(process.env.E2E_DOCENTE_ID || 18), horarioId: horario.idHorario, cupos: 3,
     })
     expect(t.status).toBe(201)
     tutoria = t.body

@@ -147,7 +147,7 @@ test.describe('A-E dashboard: "Atendido" en cada tipo de asunto [PRUEBA]', () =>
     const tutoria = async (horario, fecha, hora, etiqueta) => {
       const r = await admin.post('/Tutoria', {
         idioma: `${PREFIJO} ${etiqueta} ${sello}`, nivel: 'A1', tema: `${PREFIJO} Atencion ${etiqueta} ${sello}`, modalidad: 'Virtual',
-        estado: 'Pendiente', fechaTutoria: `${fecha}T${hora}:00`, usuarioId: DOCENTE_ID, horarioId: horario.idHorario,
+        estado: 'Pendiente', fechaTutoria: `${fecha}T${hora}:00`, usuarioId: DOCENTE_ID, horarioId: horario.idHorario, cupos: 3,
       })
       expect(r.status, JSON.stringify(r.body)).toBe(201)
       return r.body
@@ -190,6 +190,11 @@ test.describe('A-E dashboard: "Atendido" en cada tipo de asunto [PRUEBA]', () =>
     await login(page, 'admin')
     await expect(page.locator('.dash-panel[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 })
     const zona = page.locator('.dash-area-attention')
+    // El historial (atendidos y su "Deshacer") está en un panel plegado
+    const abrirHistorial = async () => {
+      const b = zona.locator('.att-history__toggle')
+      if ((await b.getAttribute('aria-expanded')) === 'false') await b.click()
+    }
 
     // Todos los tipos aparecen y tienen su botón "Atendido"
     for (const tipo of TIPOS) {
@@ -217,6 +222,7 @@ test.describe('A-E dashboard: "Atendido" en cada tipo de asunto [PRUEBA]', () =>
       expect(post.status()).toBe(200)
       expect(post.request().postDataJSON().tipo).toBe(tipo)
       await expect(zona.locator(`.att-item[data-tipo="${tipo}"]`)).toHaveCount(0)
+      await abrirHistorial()
       await expect(zona.locator(`.att-done__item[data-tipo="${tipo}"]`)).toContainText('Atendido por')
     }
     await expectAccessible(page)
@@ -224,6 +230,7 @@ test.describe('A-E dashboard: "Atendido" en cada tipo de asunto [PRUEBA]', () =>
     // Persisten tras recargar (servidor)
     await page.reload()
     await expect(page.locator('.dash-panel[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 })
+    await abrirHistorial()
     for (const tipo of TIPOS) {
       await expect(zona.locator(`.att-done__item[data-tipo="${tipo}"]`)).toBeVisible()
       await expect(zona.locator(`.att-item[data-tipo="${tipo}"]`)).toHaveCount(0)

@@ -16,7 +16,7 @@ import {
 const sello = Date.now().toString(36)
 const DOCENTE_ID = Number(process.env.E2E_DOCENTE_ID || 18)
 
-const BLOQUES = ['Requiere atención', 'Agenda', 'Indicadores', 'Actividad mensual', 'Calidad', 'Análisis por periodo', 'Demanda', 'Carga por docente y tutor']
+const BLOQUES = ['Requiere atención', 'Próximas tutorías', 'Actividad de tutorías', 'Calidad y análisis', 'Calidad del servicio', 'Demanda', 'Docentes y tutores']
 
 /** Errores de consola de la página (excluye avisos de React Router y logs informativos). */
 const capturarErroresConsola = (page) => {
@@ -55,10 +55,16 @@ for (const rol of ['admin', 'auxiliar']) {
     await expect(page.getByRole('alert')).toHaveCount(0)
     expect(errores).toEqual([])
 
-    // KPIs con contexto (valor + comparación o total)
-    const kpis = page.locator('.kpi')
-    await expect(kpis).toHaveCount(4)
-    await expect(kpis.filter({ hasText: 'Próximos 7 días' })).toContainText(/frente a|Igual que/)
+    // Nivel 1: 5 KPIs compactos con contexto (valor + comparación o total) y tooltip
+    const kpis = page.locator('.kpi-card')
+    await expect(kpis).toHaveCount(5)
+    await expect(kpis.filter({ hasText: 'Programadas' })).toContainText(/vs\.|Igual que/)
+    await expect(kpis.filter({ hasText: 'Vencidas sin cerrar' })).toBeVisible()
+    await expect(kpis.first().getByRole('button', { name: /^Más información/ })).toBeVisible()
+    // Top 5 de docentes con el criterio visible
+    const docentes = page.locator('.dash-area-load')
+    await expect(docentes).toContainText('Más tutorías realizadas en el periodo')
+    expect(await docentes.locator('.people__row').count()).toBeLessThanOrEqual(5)
 
     // Acceso al personal solo para el Administrador
     await expect(page.getByRole('link', { name: 'Gestionar docentes y tutores' })).toHaveCount(rol === 'admin' ? 1 : 0)
@@ -90,11 +96,22 @@ test('D-E2 gráfica con alternativa en tabla y análisis por periodo @responsive
   await tendencia.getByRole('button', { name: 'Gráfica' }).click()
   await expect(tendencia.locator('.recharts-surface')).toBeVisible()
 
+  // El periodo solo cambia Demanda y Docentes; la agenda y la atención no dependen de él
   const analisis = page.locator('.dash-analysis')
+  const proximasAntes = await page.locator('.dash-area-agenda').innerText()
   await analisis.getByRole('button', { name: 'Todo' }).click()
-  await expect(analisis.getByText('Todas las sesiones registradas.')).toBeVisible()
+  await expect(page.locator('.dash-area-demand')).toContainText('todas las fechas')
   await analisis.getByRole('button', { name: '30 días' }).click()
-  await expect(analisis.getByText(/^Sesiones desde el \d{2}\/\d{2}\/\d{4}/)).toBeVisible()
+  await expect(page.locator('.dash-area-demand')).toContainText(/tutorías desde el \d{2}\/\d{2}\/\d{4}/)
+  await expect(page.locator('.dash-area-load')).toContainText('(30 días)')
+  expect(await page.locator('.dash-area-agenda').innerText()).toBe(proximasAntes)
+
+  // Listado completo de docentes en un panel
+  await page.getByRole('button', { name: /^Ver las \d+ personas/ }).click()
+  const panel = page.getByRole('dialog', { name: 'Carga por docente y tutor' })
+  await expect(panel.getByRole('table')).toBeVisible()
+  await expectAccessible(page)
+  await panel.getByRole('button', { name: 'Cerrar' }).click()
 
   const demanda = page.locator('.dash-area-demand')
   await demanda.getByRole('button', { name: 'Modalidad' }).click()
@@ -114,7 +131,7 @@ test.describe('D-E3 la zona de atención y la agenda reflejan datos reales [PRUE
     const hAyer = await crearHorarioPrueba(admin, { titulo: `Dash ayer ${sello}`, fecha: ayer, usuarioId: DOCENTE_ID })
     const t1 = await admin.post('/Tutoria', {
       idioma: `${PREFIJO} Vencida ${sello}`, nivel: 'A1', tema: `${PREFIJO} Dash vencida ${sello}`, modalidad: 'Virtual', estado: 'Pendiente',
-      fechaTutoria: `${ayer}T08:00:00`, usuarioId: DOCENTE_ID, horarioId: hAyer.idHorario,
+      fechaTutoria: `${ayer}T08:00:00`, usuarioId: DOCENTE_ID, horarioId: hAyer.idHorario, cupos: 2,
     })
     expect(t1.status, JSON.stringify(t1.body)).toBe(201)
     vencida = t1.body
@@ -123,7 +140,7 @@ test.describe('D-E3 la zona de atención y la agenda reflejan datos reales [PRUE
     const hManana = await crearHorarioPrueba(admin, { titulo: `Dash mañana ${sello}`, fecha: fManana, horaInicio: '07:00', horaFin: '07:45', usuarioId: DOCENTE_ID })
     const t2 = await admin.post('/Tutoria', {
       idioma: `${PREFIJO} Mañana ${sello}`, nivel: 'B2', tema: `${PREFIJO} Dash mañana ${sello}`, modalidad: 'Presencial', estado: 'Pendiente',
-      fechaTutoria: `${fManana}T07:00:00`, usuarioId: DOCENTE_ID, horarioId: hManana.idHorario,
+      fechaTutoria: `${fManana}T07:00:00`, usuarioId: DOCENTE_ID, horarioId: hManana.idHorario, cupos: 2,
     })
     expect(t2.status, JSON.stringify(t2.body)).toBe(201)
     manana = t2.body
@@ -141,9 +158,10 @@ test.describe('D-E3 la zona de atención y la agenda reflejan datos reales [PRUE
     await esperarDashboard(page)
     const atencion = page.locator('.dash-area-attention')
 
-    // Prioridad alta, abierta por defecto, la más reciente primero
+    // Prioridad alta, primera; el detalle se despliega bajo demanda
     const itemVencidas = atencion.locator('.att-item--alta').filter({ hasText: /pendientes? con fecha pasada/ })
     await expect(itemVencidas).toBeVisible()
+    await itemVencidas.getByRole('button', { name: 'Ver detalle' }).click()
     const fila = itemVencidas.locator('.att-detail__row').filter({ hasText: `Vencida ${sello}` })
     await expect(fila).toBeVisible()
     await expect(fila.getByRole('link', { name: /Finalizar/ })).toHaveAttribute('href', `/tutorias/${vencida.idTutoria}/finalizar`)
@@ -157,13 +175,15 @@ test.describe('D-E3 la zona de atención y la agenda reflejan datos reales [PRUE
     await expect(itemVacias.locator('.att-detail__row').filter({ hasText: `Mañana ${sello}` })).toBeVisible()
     await expect(itemVacias.getByRole('link', { name: 'Asignar estudiantes' })).toHaveAttribute('href', '/agendar-tutoria')
 
-    // Agenda: grupo "Mañana" con la sesión y su cupo vacío
-    const agenda = page.locator('.dash-area-agenda')
+    // Agenda completa (panel): grupo "Mañana" con la sesión y su cupo vacío
+    await page.locator('.dash-area-agenda').getByRole('button', { name: /Ver agenda completa/ }).click()
+    const agenda = page.getByRole('dialog', { name: /Agenda/ })
     const grupo = agenda.locator('.agenda__group').filter({ has: page.getByRole('heading', { name: 'Mañana', exact: true }) })
     const sesion = grupo.locator('.agenda-item').filter({ hasText: `Mañana ${sello}` })
     await expect(sesion).toBeVisible()
     await expect(sesion).toContainText('07:00')
     await expect(sesion.locator('.agenda-cupo')).toContainText('0/2')
+    await agenda.getByRole('button', { name: 'Cerrar' }).click()
 
     // El enlace de finalizar lleva a la pantalla real (sin enviar nada)
     await fila.getByRole('link', { name: /Finalizar/ }).click()
@@ -189,7 +209,7 @@ test('D-E4 un bloque que falla no rompe el resto y se puede reintentar', async (
   await expect(calidad.getByRole('alert')).toContainText('No se pudo cargar')
   // El resto sigue funcionando con datos
   await expect(calidad.getByRole('heading', { name: 'Calificación de las sesiones' })).toBeVisible()
-  await expect(page.locator('.kpi')).toHaveCount(4)
+  await expect(page.locator('.kpi-card')).toHaveCount(5)
   // La zona de atención no depende de las estadísticas: sigue en pie
   await expect(page.locator('.dash-area-attention').getByRole('heading', { name: 'Requiere atención' })).toBeVisible()
   await expect(page.locator('.dash-area-attention').getByRole('alert')).toHaveCount(0)

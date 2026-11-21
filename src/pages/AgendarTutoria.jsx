@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useData } from '../context/DataContext'
 import FormularioTutoria from '../components/FormularioTutoria'
 import TutoriaDetailModal from '../components/TutoriaDetailModal'
@@ -6,128 +6,47 @@ import AgregarEstudianteATutoriaModal from '../components/AgregarEstudianteATuto
 import './AgendarTutoria.css'
 import { ETIQUETA_SIN_ASIGNAR } from '../lib/usuarios'
 import Icon from '../components/ui/Icon'
+import DisponibilidadDocente from '../features/horarios/DisponibilidadDocente'
+import { franjaTexto, resumenSemanal } from '../features/horarios/disponibilidad'
+
+const SIN_DOCENTE = 'sin-docente'
 
 const AgendarTutoria = () => {
-  const { horarios, getHorariosDisponibles, tutorias, getDocenteById, loadData } = useData()
+  const { getHorariosDisponibles, tutorias, getDocenteById, loadData } = useData()
   const [selectedHorario, setSelectedHorario] = useState(null)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
   const [tutoriaParaAgregarEstudiante, setTutoriaParaAgregarEstudiante] = useState(null)
-  const [searchDate, setSearchDate] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
   const [searchTutoriaQuery, setSearchTutoriaQuery] = useState('')
   const [searchTutoriaDate, setSearchTutoriaDate] = useState('')
 
-  // Función para agrupar horarios recurrentes
-  const agruparHorariosRecurrentes = (horariosList) => {
-    const grupos = new Map()
-    
-    horariosList.forEach(horario => {
-      // Crear clave única basada en título, hora inicio, hora fin, docente y salón
-      const titulo = horario.titulo || 'Sin título'
-      const horaInicio = horario.horaInicio || ''
-      const horaFin = horario.horaFin || ''
-      const docenteId = horario.docenteId || ''
-      const salon = horario.salon || ''
-      
-      const clave = `${titulo}|${horaInicio}|${horaFin}|${docenteId}|${salon}`
-      
-      if (!grupos.has(clave)) {
-        grupos.set(clave, {
-          horarios: [],
-          titulo,
-          horaInicio,
-          horaFin,
-          docenteId,
-          salon,
-          cuposDisponibles: horario.cuposDisponibles || 5
-        })
-      }
-      
-      grupos.get(clave).horarios.push(horario)
-    })
-    
-    return Array.from(grupos.values())
-  }
+  const [docenteSel, setDocenteSel] = useState('')
 
-  // Obtener todos los horarios disponibles (sin agrupar aún)
-  const todosHorariosDisponibles = getHorariosDisponibles()
-    .filter(h => {
-      // Filtrar horarios con estado "Ocupado"
-      if (h.estado && h.estado.toLowerCase() === 'ocupado') {
-        return false
-      }
-      // También filtrar si está al límite de capacidad
-      const occupied = tutorias.filter(t => t.horarioId === h.id).length
-      const capacity = h.cuposDisponibles ?? 5
-      if (occupied >= capacity) {
-        return false
-      }
-      return true
-    })
-    .filter(h => {
-      if (searchDate) {
-        const horarioDate = new Date(h.fecha).toISOString().split('T')[0]
-        return horarioDate === searchDate
-      }
-      return true
-    })
-    .filter(h => {
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        return (
-          h.titulo?.toLowerCase().includes(query)
-        )
-      }
-      return true
-    })
+  // Sesiones agendables: horario disponible, de hoy en adelante y sin tutoría (una tutoría por horario).
+  const ocupados = useMemo(() => new Set(tutorias.map((t) => t.horarioId)), [tutorias])
+  const disponibles = getHorariosDisponibles().filter((h) => h.fecha && h.horaInicio && h.horaFin && !ocupados.has(h.id))
 
-  // Ordenar por id descendente (más recientes primero) antes de agrupar
-  const horariosOrdenadosPorRecientes = [...todosHorariosDisponibles].sort((a, b) => (b.id || 0) - (a.id || 0))
-
-  // Agrupar horarios recurrentes
-  const gruposHorarios = agruparHorariosRecurrentes(horariosOrdenadosPorRecientes)
-  
-  // Para cada grupo, seleccionar el horario más cercano disponible como representante
-  const horariosDisponibles = gruposHorarios.map(grupo => {
-    // Ordenar horarios del grupo por fecha (más cercanos primero)
-    const horariosOrdenados = grupo.horarios.sort((a, b) => {
-      const fechaA = new Date(a.fecha + 'T00:00:00').getTime()
-      const fechaB = new Date(b.fecha + 'T00:00:00').getTime()
-      return fechaA - fechaB
-    })
-    
-    // Seleccionar el primero disponible (más cercano)
-    const horarioRepresentante = horariosOrdenados[0]
-    
-    // Obtener todas las fechas disponibles del grupo (excluyendo las que ya tienen tutorías)
-    const fechasDisponibles = horariosOrdenados
-      .map(h => {
-        const tutoriasEnHorario = tutorias.filter(t => t.horarioId === h.id)
-        const occupied = tutoriasEnHorario.length
-        const capacity = h.cuposDisponibles ?? 5
-        const tieneCupo = occupied < capacity
-        const tieneTutoria = tutoriasEnHorario.length > 0
-        // Una fecha está disponible solo si tiene cupo Y no tiene ninguna tutoría asignada
-        return { 
-          fecha: h.fecha, 
-          horario: h, 
-          disponible: tieneCupo && !tieneTutoria,
-          ocupado: occupied,
-          capacidad: capacity
-        }
+  // Disponibilidad agrupada por docente (ver features/horarios/disponibilidad.js: por qué no por título)
+  const porDocente = useMemo(() => {
+    const mapa = new Map()
+    for (const h of disponibles) {
+      const key = h.docenteId ? String(h.docenteId) : SIN_DOCENTE
+      if (!mapa.has(key)) mapa.set(key, [])
+      mapa.get(key).push({
+        id: h.id, fecha: h.fecha, inicio: h.horaInicio, fin: h.horaFin, espacio: h.salon, cupos: h.cuposDisponibles, original: h,
       })
-      .filter(item => item.disponible)
-      .map(item => item.fecha)
-    
-    return {
-      ...horarioRepresentante,
-      grupoId: `${grupo.titulo}|${grupo.horaInicio}|${grupo.horaFin}|${grupo.docenteId}|${grupo.salon}`,
-      esRecurrente: grupo.horarios.length > 1,
-      totalOcurrencias: grupo.horarios.length,
-      fechasDisponibles: fechasDisponibles,
-      todosLosHorarios: horariosOrdenados // Guardar todos para poder seleccionar uno específico
     }
-    })
+    return [...mapa.entries()]
+      .map(([key, sesiones]) => {
+        const d = key === SIN_DOCENTE ? null : getDocenteById(Number(key))
+        const nombre = key === SIN_DOCENTE
+          ? 'Sin docente asignado'
+          : d?.nombre || [d?.nombres, d?.apellidos].filter(Boolean).join(' ') || sesiones[0].original.docenteNombre || `Docente ${key}`
+        return { key, nombre, rol: d?.rol, sesiones, resumen: resumenSemanal(sesiones) }
+      })
+      .sort((a, b) => (a.key === SIN_DOCENTE) - (b.key === SIN_DOCENTE) || a.nombre.localeCompare(b.nombre, 'es'))
+  }, [disponibles, getDocenteById]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const grupoSel = porDocente.find((g) => g.key === docenteSel) || null
 
   const tutoriasAgendadas = tutorias
     .filter(t => {
@@ -185,82 +104,75 @@ const AgendarTutoria = () => {
       <div className="agendar-content">
         <div className="horarios-section">
           <div className="section-header">
-            <h3><Icon name="calendar" size={20} className="icon--inline" />Horarios Disponibles</h3>
-            <div className="search-controls">
-              <input
-                type="text"
-                placeholder="Buscar por título (ej: Inglés Básico)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              <input
-                type="date"
-                value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-                className="date-input"
-                title="Filtrar por fecha"
-              />
+            <h3 id="disp-titulo"><Icon name="calendar" size={20} className="icon--inline" />Disponibilidad por docente</h3>
+            <div className="search-controls disp-picker">
+              <label htmlFor="at-docente" className="disp-picker__label">Docente o tutor</label>
+              <select
+                id="at-docente"
+                className="select disp-picker__select"
+                value={docenteSel}
+                onChange={(e) => setDocenteSel(e.target.value)}
+              >
+                <option value="">Elige un docente…</option>
+                {porDocente.map((g) => (
+                  <option key={g.key} value={g.key}>
+                    {g.nombre} ({g.sesiones.length} {g.sesiones.length === 1 ? 'fecha' : 'fechas'})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="horarios-grid">
-            {horariosDisponibles.map((horario) => {
-              // Calcular cupos totales para el grupo si es recurrente
-              const esRecurrente = horario.esRecurrente || false
-              let cuposInfo = ''
-              let totalOcupados = 0
-              
-              if (esRecurrente && horario.todosLosHorarios) {
-                // Sumar cupos de todos los horarios del grupo
-                totalOcupados = horario.todosLosHorarios.reduce((sum, h) => {
-                  return sum + tutorias.filter(t => t.horarioId === h.id).length
-                }, 0)
-                const totalCapacidad = horario.todosLosHorarios.length * (horario.cuposDisponibles || 5)
-                cuposInfo = `${totalOcupados}/${totalCapacidad}`
-              } else {
-                const occupied = tutorias.filter(t => t.horarioId === horario.id).length
-                const capacity = horario.cuposDisponibles ?? 5
-                totalOcupados = occupied
-                cuposInfo = `${occupied}/${capacity}`
-              }
-              
-              return (
-              <div
-                  key={horario.grupoId || horario.id}
-                  className={`horario-card ${selectedHorario?.grupoId === horario.grupoId || selectedHorario?.id === horario.id ? 'selected' : ''}`}
-                onClick={() => setSelectedHorario(horario)}
-              >
-                <div className="horario-badges">
-                  <div className="horario-badges-left">
-                    <span className="badge available">Disponible</span>
-                    {esRecurrente && (
-                      <span className="badge recurrente" title={`Horario recurrente con ${horario.totalOcurrencias} fechas disponibles`}>
-                        <Icon name="repeat" size={14} className="icon--inline" />Recurrente ({horario.totalOcurrencias})
-                      </span>
-                    )}
-                    {selectedHorario?.grupoId === horario.grupoId || selectedHorario?.id === horario.id ? (
-                      <span className="badge selected">Seleccionado</span>
-                    ) : null}
-                  </div>
-                  <div className="cupos-badge" title={`Cupos: ${cuposInfo}`}>
-                    {cuposInfo}
-                  </div>
+          {porDocente.length === 0 ? (
+            <p className="tutorias-empty">No hay horarios disponibles a partir de hoy. Publica horarios en la sección Horarios.</p>
+          ) : grupoSel ? (
+            <div className="disp-docente">
+              <div className="disp-docente__head">
+                <div>
+                  <h4 className="disp-docente__nombre">{grupoSel.nombre}</h4>
+                  {grupoSel.rol && <span className="disp-docente__rol">{grupoSel.rol}</span>}
                 </div>
-                <h4>{horario.titulo || 'Sin título'}</h4>
-                <div className="horario-info">
-                  <span><Icon name="calendar" size={16} className="icon--inline" />{esRecurrente ? 'Múltiples fechas disponibles' : formatDate(horario.fecha)}</span>
-                  <span><Icon name="clock" size={16} className="icon--inline" />{horario.horaInicio} - {horario.horaFin}</span>
-                </div>
-                {esRecurrente && horario.fechasDisponibles && horario.fechasDisponibles.length > 0 && (
-                  <div className="fechas-recurrentes-hint">
-                    {horario.fechasDisponibles.length} fecha(s) disponible(s)
-                  </div>
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDocenteSel('')}>
+                  <Icon name="arrowLeft" size={16} /> Todos los docentes
+                </button>
+              </div>
+              <DisponibilidadDocente
+                sesiones={grupoSel.sesiones}
+                nombre={grupoSel.nombre}
+                renderAccion={(s, etiqueta) => (
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--sm"
+                    onClick={() => setSelectedHorario({ ...s.original, esRecurrente: false })}
+                    aria-label={`Agendar el ${etiqueta}`}
+                  >
+                    Agendar
+                  </button>
                 )}
-                </div>
-              )
-            })}
-          </div>
+              />
+            </div>
+          ) : (
+            <ul className="docentes-disp" aria-labelledby="disp-titulo">
+              {porDocente.map((g) => (
+                <li key={g.key}>
+                  <button type="button" className="docente-disp" onClick={() => setDocenteSel(g.key)}>
+                    <span className="docente-disp__head">
+                      <span className="docente-disp__nombre">{g.nombre}</span>
+                      <span className="docente-disp__cuenta">{g.sesiones.length} {g.sesiones.length === 1 ? 'fecha' : 'fechas'}</span>
+                    </span>
+                    <span className="docente-disp__dias">
+                      {g.resumen.map(({ dia, franjas }) => (
+                        <span key={dia.key} className="docente-disp__dia">
+                          <strong>{dia.corto}</strong> {franjas.map((f) => franjaTexto(f.inicio, f.fin)).join(', ')}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="docente-disp__cta">Ver disponibilidad <Icon name="chevronRight" size={16} /></span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {selectedHorario && (
             <div className="modal-overlay" onClick={() => setSelectedHorario(null)}>

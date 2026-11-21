@@ -6,17 +6,20 @@ import { useConfirm, useToast } from '../../components/ui/Feedback'
 import { PageHeader, LoadingState, ErrorState, EmptyState, Spinner } from '../../components/ui/States'
 import Icon from '../../components/ui/Icon'
 import StudentPicker from '../../features/tutorias/StudentPicker'
-import { fetchHorariosPropios, fetchUsuariosPorRol, parseCupos } from '../../features/tutorias/tutorias'
+import { fetchHorariosPropios, fetchUsuariosPorRol } from '../../features/tutorias/tutorias'
 import { tutoriaService } from '../../services/apiService'
 import { ApiError, getErrorMessage } from '../../lib/apiClient'
 import { ESTADO_AL_CREAR, isHorarioDisponible } from '../../lib/estados'
 import { combinarFechaHora, formatDiaLargo, formatRangoHoras } from '../../lib/fechas'
 import { getUserId, nombreCompleto } from '../../lib/roles'
 import './personal.css'
+import { aulaTexto } from '../../lib/aula'
 
 // Decisión (coordinador, 2026-11-11): modalidad de selección única.
 const MODALIDADES = ['Virtual', 'Presencial', 'Híbrido']
 const MAX_LEN = 45 // TutoriaCreate: idioma, nivel, tema, modalidad ≤ 45
+// TutoriaCreate.cupos: entero 1–1000, obligatorio. Valor inicial razonable.
+const CUPOS_POR_DEFECTO = '5'
 
 const PASOS = [
   { id: 1, titulo: 'Tema', descripcion: 'Tema de la tutoría' },
@@ -65,14 +68,15 @@ const AgendarWizard = () => {
   )
 
   const [paso, setPaso] = useState(1)
-  const [form, setForm] = useState({ idioma: '', nivel: '', tema: '', modalidad: '', tutorId: '' })
+  const [form, setForm] = useState({ idioma: '', nivel: '', tema: '', modalidad: '', tutorId: '', cupos: CUPOS_POR_DEFECTO })
   const [estudiantes, setEstudiantes] = useState([])
   const [errores, setErrores] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState(null)
 
   const dirty = useMemo(
-    () => Object.values(form).some((v) => String(v).trim()) || estudiantes.length > 0,
+    () =>
+      Object.entries(form).some(([k, v]) => (k === 'cupos' ? v !== CUPOS_POR_DEFECTO : String(v).trim())) || estudiantes.length > 0,
     [form, estudiantes]
   )
 
@@ -97,7 +101,9 @@ const AgendarWizard = () => {
   }, [paso])
 
   const horario = data?.horario
-  const cupos = horario ? parseCupos(horario.cupos) : null
+  // Capacidad de esta tutoría (la define quien agenda; el horario ya no fija cupos)
+  const cuposNum = Number(form.cupos)
+  const cupos = Number.isInteger(cuposNum) && cuposNum >= 1 && cuposNum <= 1000 ? cuposNum : null
   const tutor = data?.personas.find((p) => String(p.idUsuario) === String(form.tutorId))
 
   const set = (campo) => (e) => {
@@ -115,7 +121,12 @@ const AgendarWizard = () => {
       }
       if (!form.modalidad) er.modalidad = 'Elige una modalidad.'
     }
-    if (n === 2 && !form.tutorId) er.tutorId = 'Elige quién impartirá la tutoría.'
+    if (n === 2) {
+      if (!form.tutorId) er.tutorId = 'Elige quién impartirá la tutoría.'
+      if (!String(form.cupos).trim()) er.cupos = 'Indica los cupos máximos.'
+      else if (cupos == null) er.cupos = 'Debe ser un número entero entre 1 y 1000.'
+      else if (estudiantes.length > cupos) er.cupos = `Ya elegiste ${estudiantes.length} estudiantes; los cupos no pueden ser menos.`
+    }
     setErrores(er)
     if (Object.keys(er).length) {
       const primero = Object.keys(er)[0]
@@ -165,6 +176,7 @@ const AgendarWizard = () => {
         fechaTutoria,
         usuarioId: Number(form.tutorId),
         horarioId,
+        cupos,
         ...(estudiantes.length > 0 ? { estudianteIds: estudiantes } : {}),
       })
       toast.success(
@@ -229,8 +241,7 @@ const AgendarWizard = () => {
         <div className="meta">
           <span className="meta__item"><Icon name="calendar" size={16} />{formatDiaLargo(horario.fechaInicio)}</span>
           <span className="meta__item"><Icon name="clock" size={16} />{formatRangoHoras(horario.horaInicio, horario.horaFin)}</span>
-          <span className="meta__item"><Icon name="mapPin" size={16} />{horario.espacio}</span>
-          <span className="meta__item"><Icon name="users" size={16} />{cupos != null ? `${cupos} cupos` : 'Sin límite de cupos'}</span>
+          <span className="meta__item"><Icon name="mapPin" size={16} />{aulaTexto(horario.espacio)}</span>
         </div>
       </section>
 
@@ -329,6 +340,12 @@ const AgendarWizard = () => {
                   <Icon name="user" size={18} /> Asignarme a mí
                 </button>
               )}
+              <Field id="f-cupos" label="Cupos máximos" error={errores.cupos}
+                hint="Máximo de estudiantes que pueden inscribirse (1 a 1000).">
+                <input id="f-cupos" className="input input--cupos" type="number" inputMode="numeric" step="1"
+                  value={form.cupos} onChange={set('cupos')} aria-required="true" aria-invalid={!!errores.cupos}
+                  aria-describedby={errores.cupos ? 'f-cupos-error' : 'f-cupos-hint'} />
+              </Field>
               <div className="form-grid form-grid--2">
                 <div className="field">
                   <span className="field__label">Fecha</span>
@@ -348,7 +365,7 @@ const AgendarWizard = () => {
               <p className="field__hint">
                 {cupos != null
                   ? `Puedes agregar hasta ${cupos} ${cupos === 1 ? 'estudiante' : 'estudiantes'}.`
-                  : 'Este horario no tiene límite de cupos.'}{' '}
+                  : 'Sin límite de cupos.'}{' '}
                 También podrás hacerlo después desde el detalle.
               </p>
               <StudentPicker
@@ -360,6 +377,7 @@ const AgendarWizard = () => {
               <dl className="resumen">
                 <div><dt>Tema</dt><dd>{form.tema} · {form.idioma} {form.nivel}</dd></div>
                 <div><dt>Modalidad</dt><dd>{form.modalidad}</dd></div>
+                <div><dt>Cupos</dt><dd>{cupos ?? '—'}</dd></div>
                 <div><dt>Imparte</dt><dd>{tutor ? `${nombreCompleto(tutor)} (${tutor.tipoRol})` : '—'}</dd></div>
               </dl>
             </div>

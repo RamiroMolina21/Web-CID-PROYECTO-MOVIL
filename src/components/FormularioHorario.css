@@ -375,3 +375,675 @@ select + .input-icon {
 .input-with-icon select {
   padding-right: 4rem;
 }
+
+/* ---------- Recurrencia: franja por día y vista previa ---------- */
+.recurrencia {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.recurrencia legend {
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-label);
+}
+
+.dia-checkbox:focus-within {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+.franjas-dia {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+
+.franja-dia {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.franja-dia__dia {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.franja-dia__sep {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.franja-dia__campo input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.franja-dia__campo input:focus {
+  outline: none;
+  border-color: var(--focus-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.recurrencia-preview {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-muted);
+}
+
+.recurrencia-preview h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.recurrencia-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.recurrencia-tabla th,
+.recurrencia-tabla td {
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.recurrencia-tabla thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-label); /* sobre --bg-muted: AA en claro y oscuro (text-secondary no llegaba en oscuro) */
+}
+
+.recurrencia-tabla tbody th {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.recurrencia-tabla .num {
+  text-align: right;
+}
+
+.recurrencia-tabla td.pendiente {
+  color: var(--warning-text);
+  font-style: italic;
+}
+
+.recurrencia-total {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+.recurrencia-progreso {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--info-text);
+}
+
+@media (max-width: 480px) {
+  .franja-dia {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .franja-dia__dia {
+    grid-column: 1 / -1;
+  }
+}
+
+.fh-opcional {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* =========================================================================
+   Formulario de horario (.fh): 1. Fecha → 2. Horario → 3. Detalles.
+   Tarjeta con cabecera roja CDI, secciones separadas por filetes finos,
+   campos altos tipo píldora con icono a la izquierda y pie fijo.
+   ========================================================================= */
+.formulario-horario.fh {
+  --fh-radius: 20px;
+  --fh-field-h: 48px;
+  /* Botón principal "tinta": casi negro en claro (blanco encima 17:1), claro en oscuro (16:1) */
+  --fh-ink: #18181b;
+  --fh-ink-hover: #3f3f46;
+  --fh-ink-text: #ffffff;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  max-height: min(92vh, 54rem);
+  overflow: hidden;
+  border-radius: var(--fh-radius);
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.28), 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] .formulario-horario.fh {
+  --fh-ink: #f1f5f9;
+  --fh-ink-hover: #cbd5e1;
+  --fh-ink-text: #0f172a;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+}
+
+.fh__header {
+  flex-shrink: 0;
+  padding: 1.375rem 1.75rem 1.25rem;
+  border-radius: var(--fh-radius) var(--fh-radius) 0 0;
+}
+
+.fh__header h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.fh__subtitulo {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9); /* sobre #b11d25: 5,9:1 */
+  overflow-wrap: anywhere;
+}
+
+.fh__subtitulo strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.fh__form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.fh__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.fh__general {
+  margin: 1rem 0 0;
+  outline: none;
+}
+
+.fh__general:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Secciones separadas por un filete fino */
+.fh-section {
+  min-width: 0;
+  margin: 0;
+  padding: 1.375rem 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fh-section + .fh-section {
+  border-top: 1px solid var(--border-color);
+}
+
+.fh-section__legend {
+  float: left; /* el legend entra en el flujo flex del fieldset */
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text-heading);
+}
+
+/* Rejilla de dos columnas (fechas, horas) */
+.fh-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1rem;
+  align-items: start;
+}
+
+.fh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  min-width: 0;
+}
+
+.fh-field__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.fh-req {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.fh-opcional {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.fh-field__hint {
+  margin: 0;
+  padding-inline: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.fh-field__error {
+  margin: 0;
+  padding-inline: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--error-text);
+}
+
+/* Control tipo píldora con icono a la izquierda */
+.fh-control {
+  position: relative;
+  min-width: 0;
+}
+
+.fh-control__icon,
+.fh-control__chevron {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.fh-control__icon {
+  left: 1rem;
+}
+
+.fh-control__chevron {
+  right: 1rem;
+}
+
+.fh-input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--fh-field-h);
+  padding: 0 1.125rem 0 2.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fh-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.fh-input:hover {
+  border-color: var(--text-secondary);
+}
+
+.fh-input:focus {
+  outline: none;
+  border-color: var(--focus-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.fh-input[aria-invalid='true'] {
+  border-color: var(--error-text);
+}
+
+.fh-control--select .fh-input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* El selector nativo de fecha/hora queda a la derecha, atenuado */
+.fh-input::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.fh-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
+}
+
+[data-theme='dark'] .fh-input {
+  color-scheme: dark;
+}
+
+/* Interruptor "Repetir este horario" */
+.fh-switch {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  align-self: flex-start;
+  padding: 0.25rem 0;
+  cursor: pointer;
+}
+
+.fh-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.fh-switch__track {
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb, #cbd5e1);
+  transition: background-color 0.2s ease;
+}
+
+.fh-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fh-switch input:checked + .fh-switch__track {
+  background: var(--accent-solid);
+}
+
+.fh-switch input:checked + .fh-switch__track .fh-switch__thumb {
+  transform: translateX(18px);
+}
+
+.fh-switch input:focus-visible + .fh-switch__track {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+.fh-switch__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.fh-switch__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.fh-switch__ayuda {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* Días de la semana */
+.fh-dias {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+.fh-dia {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.fh-dia input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.fh-dia:hover {
+  border-color: var(--text-secondary);
+}
+
+.fh-dia.is-activo {
+  border-color: var(--accent-solid);
+  background: var(--accent-solid);
+  color: #ffffff;
+}
+
+.fh-dia:focus-within {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Franja por día (modo repetir) */
+.fh-vacio {
+  margin: 0;
+  padding: 0.875rem 1.125rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 14px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.fh-franjas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.fh-franja {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+}
+
+.fh-franja .fh-field__error {
+  grid-column: 2 / -1;
+}
+
+.fh-franja__dia {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.fh-preview {
+  margin: 0.25rem 0 0;
+  border-radius: 14px;
+}
+
+/* Pie fijo: Cancelar (contorno) y Guardar (tinta), ambos píldora */
+.fh__footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 1.75rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.fh__progreso {
+  margin: 0 auto 0 0;
+  font-size: 0.8125rem;
+  color: var(--info-text);
+}
+
+.fh__footer .fh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0 1.5rem;
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.fh__footer .fh-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-heading);
+}
+
+.fh__footer .fh-btn--ghost:hover {
+  background: var(--bg-muted);
+  border-color: var(--text-secondary);
+}
+
+.fh__footer .fh-btn--ink {
+  background: var(--fh-ink);
+  border: 1px solid var(--fh-ink);
+  color: var(--fh-ink-text);
+}
+
+.fh__footer .fh-btn--ink:hover:not(:disabled) {
+  background: var(--fh-ink-hover);
+  border-color: var(--fh-ink-hover);
+  opacity: 1;
+}
+
+.fh__footer .fh-btn--ink:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.fh__footer .fh-btn:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fh-switch__thumb,
+  .fh-switch__track,
+  .fh-input,
+  .fh-dia,
+  .fh__footer .fh-btn {
+    transition: none;
+  }
+}
+
+/* Móvil: una columna; el modal ocupa el alto disponible */
+@media (max-width: 640px), (max-height: 500px) {
+  :root .formulario-horario.fh {
+    max-height: calc(100dvh - 1rem);
+    overflow: hidden;
+  }
+
+  :root .formulario-horario.fh .fh__footer {
+    position: static;
+    margin: 0;
+    padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .fh__header {
+    padding: 1.125rem 1.25rem 1rem;
+  }
+
+  .fh__body {
+    padding: 0.25rem 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .fh-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fh-franja {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .fh-franja__dia,
+  .fh-franja .fh-field__error {
+    grid-column: 1 / -1;
+  }
+
+  .fh-dias {
+    gap: 0.25rem;
+  }
+
+  .fh__footer .fh-btn {
+    flex: 1 1 auto;
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .fh-franja {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fh-input {
+    padding-left: 2.5rem;
+    padding-right: 0.75rem;
+  }
+
+  .fh-control__icon {
+    left: 0.875rem;
+  }
+
+  .fh-dia {
+    font-size: 0.8125rem;
+  }
+}

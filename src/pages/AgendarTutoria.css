@@ -462,3 +462,142 @@
   color: var(--warning-text);
   font-weight: 600;
 }
+
+/* ---------- Disponibilidad por docente (ancho completo, encima de las tutorías agendadas) ---------- */
+.agendar-content > .horarios-section {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.disp-picker {
+  align-items: center;
+}
+
+.disp-picker__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-label);
+}
+
+.disp-picker__select {
+  min-width: 16rem;
+  min-height: 44px;
+  font-size: 1rem;
+}
+
+.docentes-disp {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem;
+}
+
+.docente-disp {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.docente-disp:hover {
+  border-color: var(--brand-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.docente-disp__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.docente-disp__nombre {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.docente-disp__cuenta {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.docente-disp__dias {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.docente-disp__dia strong {
+  display: inline-block;
+  min-width: 2.5rem;
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.docente-disp__cta {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--info-text);
+}
+
+.disp-docente__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.disp-docente__nombre {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.disp-docente__rol {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .disp-picker,
+  .disp-picker__select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Las tutorías agendadas también a ancho completo, en rejilla */
+.agendar-content > .tutorias-section {
+  grid-column: 1 / -1;
+}
+
+.agendar-content > .tutorias-section .tutorias-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}

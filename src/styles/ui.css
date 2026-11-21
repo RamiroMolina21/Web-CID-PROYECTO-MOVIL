@@ -1173,3 +1173,9 @@ textarea {
   color: var(--success-dot);
 }
 
+
+/* Aula opcional sin asignar: texto atenuado, nunca un hueco */
+.aula-pendiente {
+  color: var(--text-secondary);
+  font-style: italic;
+}

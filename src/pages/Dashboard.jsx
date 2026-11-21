@@ -12,12 +12,12 @@ import Icon from '../components/ui/Icon'
 import { formatDiaLargo, formatFecha, formatHora } from '../lib/fechas'
 import DashPanel from '../features/dashboard/DashPanel'
 import Atencion from '../features/dashboard/Atencion'
-import Agenda from '../features/dashboard/Agenda'
-import Indicadores from '../features/dashboard/Indicadores'
+import { ProximasTutorias } from '../features/dashboard/Agenda'
+import Kpis from '../features/dashboard/Kpis'
 import Tendencia from '../features/dashboard/Tendencia'
 import Calidad from '../features/dashboard/Calidad'
 import Demanda from '../features/dashboard/Demanda'
-import Carga from '../features/dashboard/Carga'
+import DocentesTop from '../features/dashboard/DocentesTop'
 import {
   PERIODOS,
   calcularAgenda,
@@ -32,6 +32,7 @@ import {
   inicioPeriodo,
 } from '../features/dashboard/metricas'
 import './Dashboard.css'
+import './DashboardLayout.css'
 
 /** Reloj de la página: recalcula "en curso", "vencida", "hoy"… cada minuto. */
 const useAhora = (ms = 60_000) => {
@@ -46,9 +47,11 @@ const useAhora = (ms = 60_000) => {
 const estadoQuery = (q) => (q.isLoading && q.data === undefined ? 'loading' : q.isError && q.data === undefined ? 'error' : 'ready')
 
 /**
- * Dashboard de gestión (Administrador y Auxiliar).
- * Jerarquía: 1) qué requiere atención hoy → 2) indicadores con contexto → 3) tendencia y calidad →
- * 4) análisis por periodo (demanda y carga). Cada bloque carga, falla y se reintenta por separado.
+ * Dashboard de gestión (Administrador y Auxiliar). Cuatro niveles, de lo urgente a lo complementario:
+ *  1) KPIs (estado general) → 2) operación: actividad mensual + atención y próximas tutorías →
+ *  3) calidad del servicio y demanda → 4) docentes y tutores (top 5; listado completo en un panel).
+ * El periodo de análisis solo afecta a Demanda y Docentes (no a la agenda ni a la atención de hoy).
+ * Cada bloque carga, falla y se reintenta por separado.
  */
 const Dashboard = () => {
   const { tutorias, horarios, docentes, loading, error, loadErrors = {}, loadData } = useData()
@@ -194,33 +197,66 @@ const Dashboard = () => {
         subtitle={
           <>
             {formatDiaLargo(ahora)}
-            {actualizado && <span className="dash-updated"> · Datos actualizados a las {formatHora(actualizado)}</span>}
+            {actualizado && <span className="dash-updated"> · Actualizado {formatHora(actualizado)}</span>}
           </>
         }
         actions={
           <>
-            <button type="button" className="btn btn--secondary" onClick={refrescar} disabled={refrescando}>
-              {refrescando ? <Spinner /> : <Icon name="refresh" size={18} />}
+            <button type="button" className="btn btn--secondary btn--sm" onClick={refrescar} disabled={refrescando}>
+              {refrescando ? <Spinner /> : <Icon name="refresh" size={16} />}
               {refrescando ? 'Actualizando…' : 'Actualizar'}
             </button>
-            <Link className="btn btn--primary" to="/agendar-tutoria">
-              <Icon name="calendarPlus" size={18} /> Agendar tutoría
+            <Link className="btn btn--primary btn--sm" to="/agendar-tutoria">
+              <Icon name="calendarPlus" size={16} /> Agendar tutoría
             </Link>
           </>
         }
       />
 
-      <div className="dash-grid dash-grid--top">
+      {/* Nivel 1: estado general */}
+      <DashPanel
+        className="dash-kpis-panel"
+        title="Indicadores"
+        hideTitle
+        status={estadoDe('tutorias')}
+        error={errorDe('tutorias')}
+        onRetry={loadData}
+        skeleton="kpi"
+      >
+        <Kpis kpis={kpis} />
+      </DashPanel>
+
+      {/* Nivel 2: operación */}
+      <div className="dash-grid dash-grid--ops">
+        <div className="dash-stack">
+          <DashPanel
+            className="dash-area-trend"
+            title="Actividad de tutorías"
+            subtitle="Últimos 12 meses, por mes de la sesión"
+            status={estadoDe('tutorias')}
+            error={errorDe('tutorias')}
+            onRetry={loadData}
+            skeleton="chart"
+          >
+            <Tendencia tendencia={tendencia} />
+          </DashPanel>
+          <DashPanel
+            className="dash-area-agenda"
+            title="Próximas tutorías"
+            status={estadoDe('tutorias')}
+            error={errorDe('tutorias')}
+            onRetry={loadData}
+          >
+            <ProximasTutorias agenda={agenda} ahora={ahora} />
+          </DashPanel>
+        </div>
+
         <DashPanel
+          id="atencion"
           className="dash-area-attention"
           title="Requiere atención"
-          subtitle={
-            atencion.activos.length
-              ? 'Ordenado por prioridad. Cada asunto enlaza a donde se resuelve.'
-              : 'Revisión de tutorías, horarios, calificaciones y encuestas.'
-          }
           actions={atencion.activos.length > 0 && (
-            <span className="count-pill">{formatNum(atencion.activos.length)} {atencion.activos.length === 1 ? 'asunto' : 'asuntos'}</span>
+            <span className="count-pill">{formatNum(atencion.activos.length)}</span>
           )}
           status={atencionEstado}
           error={errorDe('tutorias')}
@@ -236,74 +272,35 @@ const Dashboard = () => {
             ocupado={atendiendo}
           />
         </DashPanel>
-
-        <DashPanel
-          className="dash-area-agenda"
-          title="Agenda"
-          subtitle="Hoy y próximos 14 días"
-          status={estadoDe('tutorias')}
-          error={errorDe('tutorias')}
-          onRetry={loadData}
-          footer={<Link className="dash-link" to="/horarios">Ver todos los horarios <Icon name="arrowRight" size={16} /></Link>}
-        >
-          <Agenda agenda={agenda} ahora={ahora} />
-        </DashPanel>
       </div>
 
-      <DashPanel
-        className="dash-kpis-panel"
-        title="Indicadores"
-        subtitle="Cada cifra se compara con su periodo anterior o con su total"
-        status={estadoDe('tutorias')}
-        error={errorDe('tutorias')}
-        onRetry={loadData}
-        skeleton="kpi"
-      >
-        <Indicadores kpis={kpis} />
-      </DashPanel>
-
-      <div className="dash-grid dash-grid--mid">
-        <DashPanel
-          className="dash-area-trend"
-          title="Actividad mensual"
-          subtitle="Tutorías por mes de la sesión y estado, últimos 12 meses"
-          status={estadoDe('tutorias')}
-          error={errorDe('tutorias')}
-          onRetry={loadData}
-          skeleton="chart"
-        >
-          <Tendencia tendencia={tendencia} />
-        </DashPanel>
-
-        <DashPanel className="dash-area-quality" title="Calidad" subtitle="Histórico completo">
-          <Calidad
-            sesiones={{ status: estadoQuery(retroQ), error: retroQ.error, retry: () => retroQ.refetch(), data: calidadSesiones }}
-            encuestas={{ status: estadoQuery(encuestasQ), error: encuestasQ.error, retry: () => encuestasQ.refetch(), data: encuestas }}
-          />
-        </DashPanel>
-      </div>
-
+      {/* Niveles 3 y 4: calidad (histórico) y análisis por periodo */}
       <section className="dash-analysis" aria-labelledby="dash-analisis-t">
         <div className="dash-analysis__head">
-          <div>
-            <h2 id="dash-analisis-t" className="dash-analysis__title">Análisis por periodo</h2>
-            <p className="dash-analysis__subtitle">
-              {desde ? `Sesiones desde el ${formatFecha(desde)}, incluidas las programadas.` : 'Todas las sesiones registradas.'}
-            </p>
-          </div>
-          <div className="segmented" role="group" aria-label="Periodo del análisis">
-            {PERIODOS.map((p) => (
-              <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => setPeriodo(p.id)}>{p.label}</button>
-            ))}
+          <h2 id="dash-analisis-t" className="dash-analysis__title">Calidad y análisis</h2>
+          <div className="dash-analysis__filter">
+            <span className="dash-analysis__filter-label" id="dash-periodo-l">Periodo de Demanda y Docentes</span>
+            <div className="segmented segmented--sm" role="group" aria-labelledby="dash-periodo-l">
+              {PERIODOS.map((p) => (
+                <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => setPeriodo(p.id)}>{p.label}</button>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="dash-grid dash-grid--analysis">
+          <DashPanel className="dash-area-quality dash-area-quality--wide" headingLevel={3} title="Calidad del servicio" subtitle="Histórico completo">
+            <Calidad
+              sesiones={{ status: estadoQuery(retroQ), error: retroQ.error, retry: () => retroQ.refetch(), data: calidadSesiones }}
+              encuestas={{ status: estadoQuery(encuestasQ), error: encuestasQ.error, retry: () => encuestasQ.refetch(), data: encuestas }}
+            />
+          </DashPanel>
+
           <DashPanel
             className="dash-area-demand"
             headingLevel={3}
             title="Demanda"
-            subtitle={`${formatNum(enPeriodo.length)} tutorías · ${periodoLabel}`}
+            subtitle={desde ? `${formatNum(enPeriodo.length)} tutorías desde el ${formatFecha(desde)}` : `${formatNum(enPeriodo.length)} tutorías · todas las fechas`}
             status={estadoDe('tutorias')}
             error={errorDe('tutorias')}
             onRetry={loadData}
@@ -314,19 +311,16 @@ const Dashboard = () => {
           <DashPanel
             className="dash-area-load"
             headingLevel={3}
-            title="Carga por docente y tutor"
-            subtitle={`${formatNum(carga.length)} personas: docentes, tutores y otros asignados a tutorías`}
+            title="Docentes y tutores"
+            subtitle={`${formatNum(carga.length)} personas`}
             status={estadoDe('tutorias', 'usuarios')}
             error={errorDe('tutorias') || errorDe('usuarios')}
             onRetry={loadData}
-            footer={esAdmin && (
-              <Link className="dash-link" to="/estudiantes">Gestionar docentes y tutores <Icon name="arrowRight" size={16} /></Link>
-            )}
           >
             {retroQ.isError && !retro && (
               <p className="dash-inline-note" role="status">Calificaciones no disponibles: no se pudo cargar la retroalimentación.</p>
             )}
-            <Carga filas={carga} />
+            <DocentesTop filas={carga} periodoLabel={periodoLabel} puedeGestionar={esAdmin} />
           </DashPanel>
         </div>
       </section>
