@@ -52,10 +52,10 @@ test.describe('M-E modales de gestión', () => {
       await expect(modal).toHaveCount(0)
     })
 
-    // Solo escritorio: el calendario mensual con etiquetas por docente es la vista de 1280 px
+    // Solo escritorio: la vista Semana (por defecto) con bloques por docente es la de 1280 px
     test(`detalle de horario (${tema}): accesible`, async ({ page }) => {
       await abrirCon(page, tema, '/horarios')
-      await page.locator('.month-day-cell.today .month-horario-label').filter({ hasText: 'Laura' }).first().click()
+      await page.locator(`.cal-evento[data-fecha="${fechaEnDias(0)}"]`).filter({ hasText: 'Laura' }).first().click()
       const modal = page.getByRole('dialog', { name: horario.titulo })
       await expect(modal).toBeVisible()
       await expect(modal.getByRole('button', { name: 'Editar horario' })).toBeVisible()

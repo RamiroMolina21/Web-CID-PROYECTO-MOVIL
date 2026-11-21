@@ -1,4 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
+import Modal from '../../components/ui/Modal'
+import { aulaTexto } from '../../lib/aula'
 import { StatusBadge } from '../../components/ui/States'
 import Icon from '../../components/ui/Icon'
 import { formatDiaLargo } from '../../lib/fechas'
@@ -18,6 +20,9 @@ const etiquetaDia = (fecha, ahora) => {
 
 const nombre = (t) => nombreAsignado(t)
 
+const etiquetaDiaCorta = (fecha, ahora) =>
+  inicioDia(fecha).getTime() === inicioDia(ahora).getTime() ? 'Hoy' : etiquetaDia(fecha, ahora)
+
 const momento = (t, ahora) => {
   if (t.grupo !== 'pendiente') return null
   if (t.inicio <= ahora && t.fin >= ahora) return { tone: 'live', label: 'En curso' }
@@ -25,12 +30,13 @@ const momento = (t, ahora) => {
   return null
 }
 
-const Sesion = ({ t, ahora, conEstado }) => {
+const Sesion = ({ t, ahora, conEstado, conDia = false }) => {
   const m = momento(t, ahora)
   const lleno = t.cupos && t.inscritos >= t.cupos
   return (
     <li className="agenda-item">
       <span className="agenda-item__time">
+        {conDia && <span className="agenda-item__day">{etiquetaDiaCorta(t.inicio, ahora)}</span>}
         <span>{t.horaInicio}</span>
         {t.horaFin && <span className="agenda-item__end">{t.horaFin}</span>}
       </span>
@@ -41,7 +47,7 @@ const Sesion = ({ t, ahora, conEstado }) => {
         </p>
         <p className="agenda-item__meta">
           <span>{nombre(t)}</span>
-          <span>{[t.modalidad, t.espacio].filter(Boolean).join(' · ')}</span>
+          <span>{[t.modalidad, aulaTexto(t.espacio)].filter(Boolean).join(' · ')}</span>
         </p>
       </div>
       <div className="agenda-item__side">
@@ -105,6 +111,42 @@ const Agenda = ({ agenda, ahora }) => {
             : 'No hay más tutorías pendientes programadas.'}
         </p>
       )}
+    </div>
+  )
+}
+
+const MAX_RESUMEN = 3
+
+/**
+ * Resumen para el dashboard: las próximas 3 sesiones relevantes (las de hoy primero, luego las siguientes
+ * pendientes) con hora, idioma, nivel, responsable y estado. La agenda completa se abre en un panel.
+ * No depende del periodo de análisis: siempre es "desde hoy".
+ */
+export const ProximasTutorias = ({ agenda, ahora }) => {
+  const [completa, setCompleta] = useState(false)
+  const { deHoy, proximas, siguiente } = agenda
+  const relevantes = [...deHoy.filter((t) => t.grupo === 'pendiente' ? t.fin >= ahora : true), ...proximas].slice(0, MAX_RESUMEN)
+  const total = deHoy.length + proximas.length
+
+  return (
+    <div className="agenda agenda--resumen">
+      {relevantes.length ? (
+        <ul className="agenda__list">
+          {relevantes.map((t) => <Sesion key={t.id} t={t} ahora={ahora} conEstado conDia />)}
+        </ul>
+      ) : (
+        <p className="agenda__empty">
+          {siguiente
+            ? <>Sin tutorías en los próximos 14 días. La siguiente: <strong>{formatDiaLargo(siguiente.inicio).toLowerCase()}</strong>.</>
+            : 'No hay tutorías programadas.'}
+        </p>
+      )}
+      <button type="button" className="dash-link dash-link--button" onClick={() => setCompleta(true)}>
+        Ver agenda completa{total ? ` (${total})` : ''} <Icon name="arrowRight" size={16} />
+      </button>
+      <Modal open={completa} onClose={() => setCompleta(false)} title="Agenda: hoy y próximos 14 días" size="lg">
+        <Agenda agenda={agenda} ahora={ahora} />
+      </Modal>
     </div>
   )
 }

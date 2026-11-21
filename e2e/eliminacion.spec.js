@@ -28,7 +28,7 @@ test.describe('E-E eliminar un Docente con una tutoría compartida [PRUEBA]', ()
     const h = await crearHorarioPrueba(admin, { titulo: `Eliminacion ${sello}`, fecha, horaInicio: '06:00', horaFin: '07:00', cupos: '3', usuarioId: docente.idUsuario })
     const t = await admin.post('/Tutoria', {
       idioma: `${PREFIJO} Idioma ${sello}`, nivel: 'B1', tema: `${PREFIJO} Compartida ${sello}`, modalidad: 'Presencial', estado: 'Pendiente',
-      fechaTutoria: `${fecha}T06:00:00`, usuarioId: docente.idUsuario, horarioId: h.idHorario, estudianteIds: [e.body.idUsuario],
+      fechaTutoria: `${fecha}T06:00:00`, usuarioId: docente.idUsuario, horarioId: h.idHorario, cupos: 3, estudianteIds: [e.body.idUsuario],
     })
     expect(t.status, JSON.stringify(t.body)).toBe(201)
     tutoria = t.body
@@ -97,6 +97,7 @@ test.describe('E-E eliminar un Docente con una tutoría compartida [PRUEBA]', ()
     const asunto = page.locator('.att-item[data-tipo="tutorias-sin-asignar"]')
     await expect(asunto).toBeVisible()
     await expect(asunto).toContainText(/pendientes? sin asignar/)
+    await asunto.getByRole('button', { name: 'Ver detalle' }).click()
     await expect(asunto.locator('.att-detail__row').filter({ hasText: `Idioma ${sello}` })).toContainText('Sin asignar (usuario eliminado)')
     await expect(asunto.getByRole('link', { name: 'Ver en Agendar tutoría' })).toHaveAttribute('href', '/agendar-tutoria')
     await expect(asunto.getByRole('button', { name: /^Atendido/ })).toHaveCount(0)

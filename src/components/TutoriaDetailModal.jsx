@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { aulaTexto, tieneAula } from '../lib/aula'
 import { Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { grupoEstadoTutoria } from '../lib/estados'
@@ -157,7 +158,8 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
   }) : null
 
   const espacio = horario?.salon || horarioEspacio || ''
-  const cuposDisponibles = horario?.cuposDisponibles || 5
+  // Capacidad efectiva: tutoria.cupos (ya incluye horarioCupos de tutorías antiguas) → cupos del horario → sin límite
+  const cuposDisponibles = tutoria?.cupos ?? horario?.cuposDisponibles ?? null
 
   // Formatear fecha
   const fecha = fechaTutoria ? new Date(fechaTutoria + 'T00:00:00') : null
@@ -244,7 +246,7 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
   })
 
   const cuposOcupados = estudiantesInfo.length
-  const cuposRestantes = cuposDisponibles - cuposOcupados
+  const cuposRestantes = cuposDisponibles != null ? cuposDisponibles - cuposOcupados : null
 
   const handleDelete = async () => {
     if (!(await confirm({ title: 'Eliminar tutoría', message: '¿Seguro que deseas eliminar esta tutoría? Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true }))) {
@@ -318,16 +320,18 @@ const TutoriaDetailModal = ({ tutoria, onClose, onEdit }) => {
               <span>{modalidad}</span>
             </div>
           )}
-          {espacio && (
-            <div className="tutoria-detail-item">
-              <Icon name="building" size={18} className="tutoria-detail-icon" />
-              <span>{espacio}</span>
-            </div>
-          )}
-          {cuposRestantes >= 0 && (
+          <div className="tutoria-detail-item">
+            <Icon name="building" size={18} className="tutoria-detail-icon" />
+            <span className={tieneAula(espacio) ? undefined : 'aula-pendiente'}>{aulaTexto(espacio)}</span>
+          </div>
+          {(cuposRestantes == null || cuposRestantes >= 0) && (
             <div className="tutoria-detail-item">
               <Icon name="users" size={18} className="tutoria-detail-icon" />
-              <span>{cuposRestantes} cupo{cuposRestantes !== 1 ? 's' : ''} disponible{cuposRestantes !== 1 ? 's' : ''}</span>
+              <span>
+                {cuposRestantes == null
+                  ? `${cuposOcupados} inscrito${cuposOcupados !== 1 ? 's' : ''} · sin límite de cupos`
+                  : `${cuposOcupados} de ${cuposDisponibles} cupos ocupados · ${cuposRestantes} disponible${cuposRestantes !== 1 ? 's' : ''}`}
+              </span>
             </div>
           )}
           {tutoriaSinAsignar(tutoria) && (

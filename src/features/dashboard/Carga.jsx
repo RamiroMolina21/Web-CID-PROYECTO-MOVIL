@@ -5,10 +5,10 @@ import { formatNota, formatNum } from './metricas'
 const VISIBLES = 6
 
 /** Carga por docente/tutor. Solo lectura: no ofrece acciones sobre el personal. */
-const Carga = ({ filas }) => {
+const Carga = ({ filas, todas = false }) => {
   const [todos, setTodos] = useState(false)
   const listaId = useId()
-  const mostradas = todos ? filas : filas.slice(0, VISIBLES)
+  const mostradas = todos || todas ? filas : filas.slice(0, VISIBLES)
   const sinCarga = filas.filter((f) => !f.proximas && !f.sinCerrar && !f.realizadas).length
 
   if (filas.length === 0) return <p className="dash-empty">No hay docentes ni tutores registrados.</p>
@@ -61,7 +61,7 @@ const Carga = ({ filas }) => {
           «Realizadas» y «Calificación» usan el periodo elegido; «Próximas» y «Sin cerrar», todas las fechas.
           {sinCarga > 0 && ` ${formatNum(sinCarga)} sin actividad en el periodo.`}
         </p>
-        {filas.length > VISIBLES && (
+        {!todas && filas.length > VISIBLES && (
           <button type="button" className="btn btn--ghost btn--sm" aria-expanded={todos} aria-controls={listaId} onClick={() => setTodos((v) => !v)}>
             {todos ? 'Mostrar menos' : `Ver las ${formatNum(filas.length)} personas`}
           </button>

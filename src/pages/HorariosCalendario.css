@@ -1,0 +1,613 @@
+/* Calendario de Horarios: rejilla por horas (día/semana), mes, año y lista móvil.
+   Tipos de evento distinguidos por color + icono + texto (leyenda y nombre accesible). */
+
+.cal-layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 1600px) {
+  .cal-layout--con-docente {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+/* El panel del docente va primero en pantallas estrechas: es la respuesta directa a "¿cuándo está?" */
+@media (max-width: 1599px) {
+  .cal-layout--con-docente .cal-docente {
+    order: -1;
+  }
+}
+
+.cal {
+  min-width: 0;
+}
+
+/* ---------- Barra ---------- */
+.cal-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.cal-nav .btn {
+  min-height: 44px;
+  margin-right: 0.25rem;
+}
+
+.cal-periodo {
+  margin: 0 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.cal-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cal-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cal-filtro__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-label);
+}
+
+.cal-filtro .select {
+  min-height: 44px;
+  min-width: 11rem;
+  font-size: 1rem;
+}
+
+.cal-filtro:first-child .select {
+  min-width: 15rem;
+}
+
+/* ---------- Leyenda ---------- */
+.cal-leyenda {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.cal-leyenda__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.cal-leyenda__muestra {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 18px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+
+/* ---------- Tipos de evento (tokens: se adaptan a claro/oscuro) ---------- */
+.cal-evento--disponible,
+.cal-leyenda__item--disponible .cal-leyenda__muestra {
+  background: var(--info-bg);
+  border-color: var(--brand-blue);
+  color: var(--text-heading);
+}
+
+.cal-evento--tutoria,
+.cal-leyenda__item--tutoria .cal-leyenda__muestra {
+  background: var(--accent-hover-bg);
+  border-color: var(--accent-solid);
+  color: var(--text-heading);
+}
+
+.cal-evento--ocupado,
+.cal-leyenda__item--ocupado .cal-leyenda__muestra {
+  background: repeating-linear-gradient(135deg, var(--bg-muted) 0 6px, var(--bg-hover) 6px 12px);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.cal-evento--disponible .icon { color: var(--info-text); }
+.cal-evento--tutoria .icon { color: var(--accent-text); }
+.cal-evento--ocupado .icon { color: var(--text-secondary); }
+
+/* ---------- Evento ---------- */
+.cal-evento {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.0625rem;
+  min-width: 0;
+  padding: 0.25rem 0.375rem;
+  border: 0;
+  border-left: 3px solid;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cal-evento:hover {
+  box-shadow: var(--shadow-sm);
+  filter: brightness(0.97);
+}
+
+[data-theme='dark'] .cal-evento:hover {
+  filter: brightness(1.15);
+}
+
+.cal-evento__hora {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cal-evento__docente {
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.cal-evento__tema {
+  color: inherit;
+  font-weight: 400;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Rejilla por horas ---------- */
+.cal-rejilla {
+  --cal-gutter: 3.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cal-rejilla--semana {
+  min-width: 760px;
+}
+
+.cal-scroll {
+  overflow-x: auto;
+}
+
+.cal-rejilla__cabecera {
+  display: grid;
+  grid-template-columns: var(--cal-gutter) repeat(var(--cal-cols, 7), minmax(0, 1fr));
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.cal-rejilla--dia .cal-rejilla__cabecera,
+.cal-rejilla--dia .cal-rejilla__cuerpo {
+  --cal-cols: 1;
+}
+
+.cal-rejilla__dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-left: 1px solid var(--border-light);
+}
+
+.cal-rejilla__dia-nombre {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.cal-rejilla__dia-num {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-rejilla__dia.es-hoy .cal-rejilla__dia-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--accent-solid);
+  color: #ffffff;
+}
+
+.cal-rejilla__cuerpo {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--cal-gutter) repeat(var(--cal-cols, 7), minmax(0, 1fr));
+}
+
+.cal-rejilla__horas {
+  position: relative;
+}
+
+.cal-rejilla__hora {
+  position: absolute;
+  right: 0.5rem;
+  transform: translateY(-0.5em);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-rejilla__hora:first-child {
+  transform: none;
+  margin-top: 0.125rem;
+}
+
+.cal-rejilla__columna {
+  position: relative;
+  border-left: 1px solid var(--border-light);
+}
+
+.cal-rejilla__columna.es-hoy {
+  background: color-mix(in srgb, var(--accent-hover-bg) 45%, transparent);
+}
+
+.cal-rejilla__linea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border-light);
+  pointer-events: none;
+}
+
+.cal-evento--bloque,
+.cal-evento--estrecho {
+  position: absolute;
+  z-index: 1;
+}
+
+.cal-evento--estrecho {
+  padding: 0.25rem;
+  font-size: 0.6875rem;
+}
+
+.cal-evento--estrecho .cal-evento__hora .icon {
+  display: none;
+}
+
+.cal-evento:focus-visible {
+  z-index: 3;
+}
+
+.cal-rejilla--dia .cal-evento--bloque {
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.625rem;
+}
+
+/* ---------- Mes ---------- */
+.cal-mes {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cal-mes__cabecera,
+.cal-mes__semana {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.cal-mes__cabecera {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cal-mes__cabecera span {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.cal-mes__semana + .cal-mes__semana {
+  border-top: 1px solid var(--border-light);
+}
+
+.cal-mes__celda {
+  min-height: 7.5rem;
+  min-width: 0;
+  padding: 0.25rem;
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cal-mes__celda:first-child {
+  border-left: 0;
+}
+
+.cal-mes__celda.es-fuera {
+  background: repeating-linear-gradient(135deg, transparent 0 8px, var(--bg-hover) 8px 9px);
+}
+
+.cal-mes__celda.es-fuera .cal-mes__num {
+  color: var(--text-secondary);
+}
+
+.cal-mes__num {
+  align-self: flex-end;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0 0.375rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-heading);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.cal-mes__num:hover {
+  background: var(--bg-hover);
+}
+
+.cal-mes__celda.es-hoy .cal-mes__num {
+  background: var(--accent-solid);
+  color: #ffffff;
+}
+
+.cal-mes__eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  min-width: 0;
+}
+
+/* En el mes: hora arriba y docente abreviado debajo (sin truncar la hora) */
+.cal-evento--mes {
+  width: 100%;
+  gap: 0;
+  padding: 0.1875rem 0.375rem;
+}
+
+.cal-evento--mes .cal-evento__docente {
+  display: block;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+.cal-mes__mas {
+  align-self: flex-start;
+  min-height: 1.75rem;
+  padding: 0 0.375rem;
+  border: 0;
+  background: none;
+  color: var(--info-text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.cal-mes__mas:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Año ---------- */
+.cal-anio {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+}
+
+.cal-anio__mes {
+  width: 100%;
+  height: 100%;
+  min-height: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cal-anio__mes:hover {
+  border-color: var(--brand-blue);
+}
+
+.cal-anio__nombre {
+  font-weight: 600;
+  color: var(--text-heading);
+  text-transform: capitalize;
+}
+
+.cal-anio__vacio {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.cal-anio__cuentas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-anio__cuenta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-primary);
+}
+
+.cal-anio__cuenta--disponible .icon { color: var(--info-text); }
+.cal-anio__cuenta--tutoria .icon { color: var(--accent-text); }
+.cal-anio__cuenta--ocupado .icon { color: var(--text-secondary); }
+
+/* ---------- Lista (móvil) ---------- */
+.cal-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cal-lista__fecha {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.cal-lista__hoy {
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-solid);
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+
+.cal-lista ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.cal-evento--lista {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.cal-evento--lista .cal-evento__docente {
+  -webkit-line-clamp: unset;
+}
+
+.cal-vacio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Panel del docente ---------- */
+.cal-docente {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.cal-docente__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cal-docente__nombre {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+@media (max-width: 767px) {
+  .cal-barra {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cal-filtros,
+  .cal-filtro,
+  .cal-filtro .select,
+  .cal-filtro:first-child .select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cal-periodo {
+    font-size: 1rem;
+    white-space: normal;
+  }
+}
+
+/* Bloques cortos (menos de ~1 h 20 min): una línea de docente y tema en la misma línea */
+.cal-evento--corto .cal-evento__docente {
+  -webkit-line-clamp: 1;
+}
+
+.cal-evento--corto .cal-evento__tema {
+  /* oculto a la vista pero no al lector de pantalla */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

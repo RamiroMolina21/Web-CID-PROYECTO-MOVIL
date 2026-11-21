@@ -1,998 +1,364 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useData } from '../context/DataContext'
 import { useToast, useConfirm } from '../components/ui/Feedback'
 import FormularioHorario from '../components/FormularioHorario'
 import TutoriaDetailModal from '../components/TutoriaDetailModal'
 import HorarioDetailModal from '../components/HorarioDetailModal'
-import './Horarios.css'
-import { ETIQUETA_ELIMINADO, ETIQUETA_SIN_ASIGNAR } from '../lib/usuarios'
 import Icon from '../components/ui/Icon'
+import DisponibilidadDocente from '../features/horarios/DisponibilidadDocente'
+import { fechaLarga, franjaTexto, horaCorta, hoyIso, isoLocal, minutos } from '../features/horarios/disponibilidad'
+import {
+  TIPOS_EVENTO, aHora, aIso, diasDeVista, moverFecha, nombreCorto, nombreMes, ordenarEventos,
+  rangoHoras, repartirCarriles, tituloPeriodo,
+} from '../features/horarios/calendario'
+import { isHorarioDisponible } from '../lib/estados'
+import { ETIQUETA_ELIMINADO, ETIQUETA_SIN_ASIGNAR } from '../lib/usuarios'
+import { aulaTexto } from '../lib/aula'
+import './Horarios.css'
+import './HorariosCalendario.css'
+
+// Vista por defecto: Semana. Es la que deja ver a la vez el día, la franja exacta (posición en la rejilla
+// por horas) y el docente de cada disponibilidad; el Mes resume y el Día detalla. En móvil, las vistas
+// Día/Semana/Mes se muestran como lista por día (una rejilla de 7 columnas no es legible a 375 px).
+const VISTA_INICIAL = 'semana'
+const ESTADOS_ACTIVOS = ['pendiente', 'programada', 'programado', 'activa', 'activo', 'en curso', 'en_curso']
+const HORA_PX = 60
+const MAX_MES = 3
+const TODOS = ''
+
+const useMovil = () => {
+  const query = '(max-width: 767px)'
+  const [movil, setMovil] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    const fn = (e) => setMovil(e.matches)
+    mql.addEventListener('change', fn)
+    return () => mql.removeEventListener('change', fn)
+  }, [])
+  return movil
+}
+
+/** Nombre completo accesible de un evento: tipo, fecha, franja, docente, tema y aula. */
+const etiquetaEvento = (e) =>
+  [
+    TIPOS_EVENTO[e.tipo].label,
+    `${fechaLarga(e.fecha)}, ${franjaTexto(e.inicio, e.fin)}`,
+    e.docente,
+    e.tema,
+    aulaTexto(e.espacio),
+  ].filter(Boolean).join('. ')
+
+// El nombre accesible sale del propio contenido (texto visible + partes solo para lectores de pantalla),
+// así coincide con lo que se ve (WCAG 2.5.3) y el lector oye tipo, fecha, docente completo y aula.
+const Evento = ({ evento, variante, estilo, onAbrir, corto = false }) => {
+  const abreviado = variante === 'mes' || variante === 'estrecho'
+  return (
+    <button
+      type="button"
+      className={`cal-evento cal-evento--${evento.tipo} cal-evento--${variante}${corto ? ' cal-evento--corto' : ''}`}
+      style={estilo}
+      onClick={() => onAbrir(evento)}
+      title={etiquetaEvento(evento)}
+      data-fecha={evento.fecha}
+      data-tipo={evento.tipo}
+    >
+      <span className="sr-only">{TIPOS_EVENTO[evento.tipo].label}, {fechaLarga(evento.fecha)}, </span>
+      <span className="cal-evento__hora">
+        <Icon name={TIPOS_EVENTO[evento.tipo].icon} size={12} />
+        {variante === 'mes' ? horaCorta(evento.inicio) : franjaTexto(evento.inicio, evento.fin)}
+      </span>
+      {variante === 'mes' && <span className="sr-only"> a {horaCorta(evento.fin)}</span>}
+      <span className="sr-only">, </span>
+      <span className="cal-evento__docente">{abreviado ? evento.docenteCorto : evento.docente}</span>
+      {abreviado && evento.docenteCorto !== evento.docente && <span className="sr-only"> ({evento.docente})</span>}
+      {evento.tema && variante !== 'mes' && <><span className="sr-only">, </span><span className="cal-evento__tema">{evento.tema}</span></>}
+      {evento.tema && variante === 'mes' && <span className="sr-only">, {evento.tema}</span>}
+      <span className="sr-only">, {aulaTexto(evento.espacio)}</span>
+    </button>
+  )
+}
 
 const Horarios = () => {
-  const { tutorias, horarios, deleteHorario, loading, error, getDocenteById, docentes } = useData()
+  const { tutorias, horarios, deleteHorario, loading, error, getDocenteById } = useData()
   const toast = useToast()
   const confirm = useConfirm()
+  const movil = useMovil()
   const [showHorarioForm, setShowHorarioForm] = useState(false)
   const [selectedTutoria, setSelectedTutoria] = useState(null)
   const [selectedHorario, setSelectedHorario] = useState(null)
   const [horarioToEdit, setHorarioToEdit] = useState(null)
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState('mes')
-  
-  // Filtrar datos válidos y aplicar filtros de negocio
-  const validHorarios = Array.isArray(horarios) 
-    ? horarios
-        .filter(h => h && h.fecha && h.horaInicio && h.horaFin)
-        .filter(h => {
-          // Filtrar horarios con estado "Ocupado"
-          if (h.estado && h.estado.toLowerCase() === 'ocupado') {
-            return false
-          }
-          // También filtrar si está al límite de capacidad
-          const occupied = tutorias.filter(t => t.horarioId === h.id).length
-          const capacity = h.cuposDisponibles ?? 5
-          if (occupied >= capacity) {
-            return false
-          }
-          return true
-        })
-    : []
-  
-  const validTutorias = Array.isArray(tutorias)
-    ? tutorias
-        .filter(t => t && t.fecha && t.horaInicio && t.horaFin)
-        .filter(t => {
-          // Solo mostrar tutorías con estados pendiente, programada o activa
-          const estado = (t.estado || '').toLowerCase()
-          const estadosPermitidos = [
-            'pendiente', 
-            'programada', 
-            'programado',
-            'activa', 
-            'activo',
-            'en curso',
-            'en_curso'
-          ]
-          return estadosPermitidos.includes(estado)
-        })
-    : []
+  const [fecha, setFecha] = useState(() => new Date())
+  const [vista, setVista] = useState(VISTA_INICIAL)
+  const [docenteSel, setDocenteSel] = useState(TODOS)
 
-  const getWeekDates = () => {
-    const start = new Date(currentDate)
-    const day = start.getDay()
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-    start.setDate(diff)
-
-    const dates = []
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(start)
-      date.setDate(start.getDate() + i)
-      dates.push(date)
-    }
-    return dates
-  }
-
-  const getDayDates = () => {
-    return [new Date(currentDate)]
-  }
-
-  const getMonthDates = () => {
-    const year = currentDate.getFullYear()
-    const month = currentDate.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const startDate = new Date(firstDay)
-    startDate.setDate(startDate.getDate() - firstDay.getDay())
-    
-    const dates = []
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate)
-      date.setDate(startDate.getDate() + i)
-      dates.push(date)
-    }
-    return dates
-  }
-
-  const getYearMonths = () => {
-    const year = currentDate.getFullYear()
-    const months = []
-    for (let i = 0; i < 12; i++) {
-      months.push(new Date(year, i, 1))
-    }
-    return months
-  }
-
-  const getHours = () => {
-    const hours = []
-    // 1 AM to 11 AM
-    for (let i = 1; i < 12; i++) {
-      hours.push(`${i} AM`)
-    }
-    // 12 PM (noon)
-    hours.push('12 PM')
-    // 1 PM to 11 PM
-    for (let i = 1; i < 12; i++) {
-      hours.push(`${i} PM`)
-    }
-    // 12 AM (midnight)
-    hours.push('12 AM')
-    return hours
-  }
-
-  const formatDate = (date) => {
-    const days = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
-    return days[date.getDay()]
-  }
-
-  const formatDateNumber = (date) => {
-    return date.getDate()
-  }
-
-  const formatMonthYear = () => {
-    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    return `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`
-  }
-
-  const formatDayDate = () => {
-    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    return `${currentDate.getDate()} ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`
-  }
-
-  // Función auxiliar para validar y formatear fechas
-  const formatDateToISOString = (dateInput) => {
-    if (!dateInput) return null
-    
-    // Si ya es una fecha en formato YYYY-MM-DD, devolverla directamente
-    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
-      return dateInput.split('T')[0]
-    }
-    
-    // Intentar crear una fecha válida
-    try {
-      const date = new Date(dateInput)
-      if (isNaN(date.getTime())) {
-        console.warn('Fecha inválida:', dateInput)
-        return null
+  // ---------- Eventos normalizados ----------
+  const eventos = useMemo(() => {
+    const persona = (id, respaldo) => {
+      const d = id ? getDocenteById(Number(id) || id) : null
+      if (d) {
+        const completo = d.nombre || [d.nombres, d.apellidos].filter(Boolean).join(' ').trim() || respaldo || 'Docente'
+        return { docente: completo, docenteCorto: nombreCorto(d.nombres, d.apellidos, completo) }
       }
-      return date.toISOString().split('T')[0]
-    } catch (error) {
-      console.warn('Error al procesar fecha:', dateInput, error)
-      return null
+      const completo = respaldo || 'Docente'
+      return { docente: completo, docenteCorto: nombreCorto(null, null, completo) }
     }
-  }
+    const listaH = Array.isArray(horarios) ? horarios : []
+    const listaT = Array.isArray(tutorias) ? tutorias : []
+    const porId = new Map(listaH.map((h) => [h.id, h]))
+    const activas = listaT.filter((t) => t && aIso(t.fecha) && aHora(t.horaInicio) && aHora(t.horaFin) && ESTADOS_ACTIVOS.includes((t.estado || '').toLowerCase()))
+    const conTutoria = new Set(activas.map((t) => t.horarioId).filter(Boolean))
 
-  const getTutoriasForDate = (date) => {
-    try {
-      const dateStr = date.toISOString().split('T')[0]
-      return validTutorias.filter(t => {
-        if (!t || !t.fecha) return false
-        const tutoriaDate = formatDateToISOString(t.fecha)
-        return tutoriaDate === dateStr
-      })
-    } catch (error) {
-      console.error('Error en getTutoriasForDate:', error)
-      return []
-    }
-  }
-
-  const getTutoriasForTimeSlot = (date, hour) => {
-    try {
-      const dateStr = date.toISOString().split('T')[0]
-      return validTutorias.filter(t => {
-        if (!t || !t.fecha || !t.horaInicio) return false
-        
-        const tutoriaDate = formatDateToISOString(t.fecha)
-        if (!tutoriaDate || tutoriaDate !== dateStr) return false
-        
-        // Convert hour display format to 24-hour format for comparison
-        const [hourNum, period] = hour.split(' ')
-        let hour24 = parseInt(hourNum)
-        if (period === 'PM' && hour24 !== 12) {
-          hour24 += 12
-        } else if (period === 'AM' && hourNum === '12') {
-          hour24 = 0
+    const deHorarios = listaH
+      .filter((h) => h && aIso(h.fecha) && aHora(h.horaInicio) && aHora(h.horaFin) && !conTutoria.has(h.id))
+      .map((h) => {
+        const respaldo = h.sinDueno ? ETIQUETA_ELIMINADO : [h.docenteNombre, h.docenteApellidos].filter(Boolean).join(' ')
+        return {
+          key: `h${h.id}`,
+          tipo: isHorarioDisponible(h.estado) ? 'disponible' : 'ocupado',
+          fecha: aIso(h.fecha),
+          inicio: aHora(h.horaInicio),
+          fin: aHora(h.horaFin),
+          docenteId: h.docenteId ? String(h.docenteId) : null,
+          ...(h.sinDueno ? { docente: ETIQUETA_ELIMINADO, docenteCorto: ETIQUETA_ELIMINADO } : persona(h.docenteId, respaldo)),
+          espacio: h.salon,
+          cupos: h.cuposDisponibles,
+          horario: h,
         }
-        
-        const [startHour] = t.horaInicio.split(':')
-        const startHour24 = parseInt(startHour)
-        return startHour24 === hour24
       })
-    } catch (error) {
-      console.error('Error en getTutoriasForTimeSlot:', error)
-      return []
-    }
-  }
 
-  const getHorariosForDate = (date) => {
-    try {
-      const dateStr = date.toISOString().split('T')[0]
-      return validHorarios.filter(h => {
-        if (!h || !h.fecha) return false
-        const horarioDate = formatDateToISOString(h.fecha)
-        return horarioDate === dateStr
-      })
-    } catch (error) {
-      console.error('Error en getHorariosForDate:', error)
-      return []
-    }
-  }
-
-  const getHorariosForTimeSlot = (date, hour) => {
-    try {
-      const dateStr = date.toISOString().split('T')[0]
-      return validHorarios.filter(h => {
-        if (!h || !h.fecha || !h.horaInicio) return false
-        
-        const horarioDate = formatDateToISOString(h.fecha)
-        if (!horarioDate || horarioDate !== dateStr) return false
-        
-        // Convert hour display format to 24-hour format for comparison
-        const [hourNum, period] = hour.split(' ')
-        let hour24 = parseInt(hourNum)
-        if (period === 'PM' && hour24 !== 12) {
-          hour24 += 12
-        } else if (period === 'AM' && hourNum === '12') {
-          hour24 = 0
-        }
-        
-        // Extraer la hora del horario (puede venir como "13:00" o "2025-11-18T13:00:00")
-        let horaInicioStr = h.horaInicio
-        if (horaInicioStr && horaInicioStr.includes('T')) {
-          // Si viene como DateTime, extraer solo la hora
-          horaInicioStr = horaInicioStr.split('T')[1]?.split(':').slice(0, 2).join(':') || horaInicioStr
-        }
-        
-        const [startHour] = horaInicioStr.split(':')
-        const startHour24 = parseInt(startHour)
-        
-        if (isNaN(startHour24)) {
-          console.warn('Hora de inicio inválida en horario:', h.id, h.horaInicio)
-          return false
-        }
-        
-        return startHour24 === hour24
-      })
-    } catch (error) {
-      console.error('Error en getHorariosForTimeSlot:', error)
-      return []
-    }
-  }
-
-  // Calcula la altura en píxeles para la duración entre horaInicio y horaFin
-  // Cada time-slot tiene 60px de altura, así que 1 hora = 60px
-  const calculateDuration = (horaInicio, horaFin, fecha) => {
-    try {
-      // Validar que las horas existan
-      if (!horaInicio || !horaFin) {
-        return 60 // Altura por defecto (1 hora)
+    const deTutorias = activas.map((t) => {
+      const h = porId.get(t.horarioId)
+      const id = t.docenteId || h?.docenteId || null
+      return {
+        key: `t${t.id}`,
+        tipo: 'tutoria',
+        fecha: aIso(t.fecha),
+        inicio: aHora(t.horaInicio),
+        fin: aHora(t.horaFin),
+        docenteId: t.sinAsignar ? null : id ? String(id) : null,
+        ...(t.sinAsignar ? { docente: ETIQUETA_SIN_ASIGNAR, docenteCorto: 'Sin asignar' } : persona(id, [t.docenteNombre, t.docenteApellidos].filter(Boolean).join(' '))),
+        tema: [t.idioma, t.nivel].filter(Boolean).join(' ') + (t.tema ? ` · ${t.tema}` : ''),
+        espacio: h?.salon,
+        tutoria: t,
       }
-      
-      // Extraer la hora si viene como DateTime completo
-      let horaInicioStr = horaInicio
-      let horaFinStr = horaFin
-      
-      if (horaInicioStr && horaInicioStr.includes('T')) {
-        horaInicioStr = horaInicioStr.split('T')[1]?.split(':').slice(0, 2).join(':') || horaInicioStr
-      }
-      if (horaFinStr && horaFinStr.includes('T')) {
-        horaFinStr = horaFinStr.split('T')[1]?.split(':').slice(0, 2).join(':') || horaFinStr
-      }
-      
-      // Calculamos usando solo el tiempo
-      const [sH, sM] = (horaInicioStr || '00:00').split(':').map(Number)
-      const [eH, eM] = (horaFinStr || '00:00').split(':').map(Number)
-      
-      // Validar que sean números válidos
-      if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) {
-        return 60
-      }
-      
-      let startMinutes = sH * 60 + sM
-      let endMinutes = eH * 60 + eM
+    })
+    return ordenarEventos([...deHorarios, ...deTutorias])
+  }, [horarios, tutorias, getDocenteById])
 
-      let diff = endMinutes - startMinutes
-      if (diff <= 0) {
-        // Si termina al día siguiente, agregamos 24 horas
-        diff += 24 * 60
-      }
-      
-      // Cada time-slot tiene 60px de altura, así que 1 hora = 60px
-      // Convertimos minutos a píxeles: (minutos / 60) * 60px
-      const heightInPixels = (diff / 60) * 60
-      
-      // Asegurar altura mínima de 1 hora
-      return Math.max(60, heightInPixels)
-    } catch (err) {
-      console.warn('Error calculando duración:', err, { horaInicio, horaFin, fecha })
-      return 60
+  // Docentes con eventos, para el filtro
+  const docentesConEventos = useMemo(() => {
+    const m = new Map()
+    for (const e of eventos) if (e.docenteId && !m.has(e.docenteId)) m.set(e.docenteId, e.docente)
+    return [...m.entries()].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  }, [eventos])
+
+  const visibles = docenteSel === TODOS ? eventos : eventos.filter((e) => e.docenteId === docenteSel)
+  const nombreSel = docentesConEventos.find((d) => d.id === docenteSel)?.nombre
+
+  // Resumen semanal del docente elegido: sus franjas disponibles de hoy en adelante
+  const sesionesDocente = useMemo(() => {
+    if (docenteSel === TODOS) return []
+    const hoy = hoyIso()
+    return visibles
+      .filter((e) => e.tipo === 'disponible' && e.fecha >= hoy)
+      .map((e) => ({ id: e.horario.id, fecha: e.fecha, inicio: e.inicio, fin: e.fin, espacio: e.espacio, cupos: e.cupos, horario: e.horario }))
+  }, [visibles, docenteSel])
+
+  const porFecha = useMemo(() => {
+    const m = new Map()
+    for (const e of visibles) {
+      if (!m.has(e.fecha)) m.set(e.fecha, [])
+      m.get(e.fecha).push(e)
     }
+    return m
+  }, [visibles])
+
+  const abrir = (e) => {
+    if (e.tutoria) setSelectedTutoria(e.tutoria)
+    else setSelectedHorario(e.horario)
   }
 
-  // Calcula el margen superior basado en los minutos de inicio
-  // Si el horario empieza a las 1:30 PM, el marginTop debe ser 30/60 * 60px = 30px
-  const calculateMarginTop = (horaInicio) => {
-    try {
-      if (!horaInicio) return 0
-      
-      // Extraer la hora si viene como DateTime completo
-      let horaInicioStr = horaInicio
-      if (horaInicioStr && horaInicioStr.includes('T')) {
-        horaInicioStr = horaInicioStr.split('T')[1]?.split(':').slice(0, 2).join(':') || horaInicioStr
-      }
-      
-      const [hours, minutes] = horaInicioStr.split(':').map(Number)
-      
-      if (isNaN(hours) || isNaN(minutes)) return 0
-      
-      // Los minutos se convierten a píxeles: (minutos / 60) * 60px
-      return (minutes / 60) * 60
-    } catch (err) {
-      console.warn('Error calculando marginTop:', err, horaInicio)
-      return 0
-    }
+  const irADia = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    setFecha(new Date(y, m - 1, d))
+    setVista('dia')
   }
 
-  // Calcula la posición absoluta desde el inicio del calendar-day-column
-  // basado en la hora de inicio del horario
-  const calculateAbsoluteTop = (horaInicio) => {
-    try {
-      if (!horaInicio) return 4 // 4px = padding del time-slot
-      
-      // Extraer la hora si viene como DateTime completo
-      let horaInicioStr = horaInicio
-      if (horaInicioStr && horaInicioStr.includes('T')) {
-        horaInicioStr = horaInicioStr.split('T')[1]?.split(':').slice(0, 2).join(':') || horaInicioStr
-      }
-      
-      const [hours, minutes] = horaInicioStr.split(':').map(Number)
-      
-      if (isNaN(hours) || isNaN(minutes)) return 4
-      
-      // Convertir hora a índice en el array de horas
-      // Las horas van de 1 AM a 12 AM
-      let hourIndex = 0
-      if (hours === 12) {
-        hourIndex = 11 // 12 PM está en el índice 11
-      } else if (hours >= 1 && hours <= 11) {
-        hourIndex = hours - 1 // 1 AM = índice 0, 11 AM = índice 10
-      } else if (hours === 0) {
-        hourIndex = 23 // 12 AM está al final
-      } else {
-        // Horas PM (13-23)
-        hourIndex = hours - 1
-      }
-      
-      // Calcular posición: (índice * 60px por time-slot) + (minutos / 60 * 60px) + padding
-      const topPosition = (hourIndex * 60) + (minutes / 60 * 60) + 4
-      
-      return topPosition
-    } catch (err) {
-      console.warn('Error calculando absoluteTop:', err, horaInicio)
-      return 4
-    }
-  }
+  const hoy = hoyIso()
 
-  const navigateDate = (direction) => {
-    const newDate = new Date(currentDate)
-    if (viewMode === 'dia') {
-      newDate.setDate(newDate.getDate() + direction)
-    } else if (viewMode === 'semana') {
-      newDate.setDate(newDate.getDate() + (direction * 7))
-    } else if (viewMode === 'mes') {
-      newDate.setMonth(newDate.getMonth() + direction)
-    } else if (viewMode === 'año') {
-      newDate.setFullYear(newDate.getFullYear() + direction)
-    }
-    setCurrentDate(newDate)
-  }
-
-  const goToToday = () => {
-    setCurrentDate(new Date())
-  }
-
-  const handleTutoriaClick = (tutoria) => {
-    setSelectedTutoria(tutoria)
-  }
-
-  const handleHorarioClick = (horario) => {
-    setSelectedHorario(horario)
-  }
-
-  const isToday = (date) => {
-    return date.toDateString() === new Date().toDateString()
-  }
-
-  const isCurrentMonth = (date) => {
-    return date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear()
-  }
-
-  // Función helper para obtener el nombre del docente de un horario
-  const getDocenteNombreFromHorario = (horario) => {
-    if (!horario) return 'Docente'
-    if (horario.sinDueno) return ETIQUETA_ELIMINADO
-    
-    // Intentar obtener docente por ID
-    let docente = null
-    if (horario.docenteId) {
-      docente = getDocenteById(Number(horario.docenteId) || horario.docenteId)
-    }
-    
-    // Si no se encontró por ID, buscar por correo
-    if (!docente && horario.docenteCorreo && docentes) {
-      docente = docentes.find(d => (d.email || d.correo)?.toLowerCase() === horario.docenteCorreo.toLowerCase())
-    }
-    
-    // Si aún no se encontró, buscar por nombre y apellidos
-    if (!docente && horario.docenteNombre && horario.docenteApellidos && docentes) {
-      docente = docentes.find(d => {
-        const nombreMatch = (d.nombres || d.nombre || '').toLowerCase() === horario.docenteNombre.toLowerCase()
-        const apellidosMatch = (d.apellidos || d.apellido || '').toLowerCase() === horario.docenteApellidos.toLowerCase()
-        return nombreMatch && apellidosMatch
-      })
-    }
-    
-    // Formatear nombre del docente
-    if (docente) {
-      return docente.nombre || (docente.nombres && docente.apellidos 
-        ? `${docente.nombres} ${docente.apellidos}`.trim() 
-        : docente.nombres || 'Docente')
-    }
-    
-    // Si hay información del docente en el horario directamente
-    if (horario.docenteNombre && horario.docenteApellidos) {
-      return `${horario.docenteNombre} ${horario.docenteApellidos}`.trim()
-    }
-    
-    return horario.docenteNombre || 'Docente'
-  }
-
-  // Función helper para obtener el nombre del docente de una tutoría
-  const getDocenteNombreFromTutoria = (tutoria) => {
-    if (!tutoria) return 'Docente'
-    // Sin asignar (usuario eliminado): no se "rellena" con el dueño del horario
-    if (tutoria.sinAsignar) return ETIQUETA_SIN_ASIGNAR
-    
-    // Intentar obtener docente por ID (puede ser docenteId, usuarioId, etc.)
-    let docente = null
-    const docenteId = tutoria.docenteId || tutoria.usuarioId || tutoria.idDocente
-    if (docenteId) {
-      docente = getDocenteById(Number(docenteId) || docenteId)
-    }
-    
-    // Si no se encontró por ID, buscar por correo
-    if (!docente && tutoria.docenteCorreo && docentes) {
-      docente = docentes.find(d => (d.email || d.correo)?.toLowerCase() === tutoria.docenteCorreo.toLowerCase())
-    }
-    
-    // Si aún no se encontró, buscar por nombre y apellidos
-    if (!docente && tutoria.docenteNombre && tutoria.docenteApellidos && docentes) {
-      docente = docentes.find(d => {
-        const nombreMatch = (d.nombres || d.nombre || '').toLowerCase() === tutoria.docenteNombre.toLowerCase()
-        const apellidosMatch = (d.apellidos || d.apellido || '').toLowerCase() === tutoria.docenteApellidos.toLowerCase()
-        return nombreMatch && apellidosMatch
-      })
-    }
-    
-    // Si la tutoría tiene un horarioId, obtener el docente del horario
-    if (!docente && tutoria.horarioId && horarios) {
-      const horario = horarios.find(h => h.id === tutoria.horarioId)
-      if (horario) {
-        return getDocenteNombreFromHorario(horario)
-      }
-    }
-    
-    // Formatear nombre del docente
-    if (docente) {
-      return docente.nombre || (docente.nombres && docente.apellidos 
-        ? `${docente.nombres} ${docente.apellidos}`.trim() 
-        : docente.nombres || 'Docente')
-    }
-    
-    // Si hay información del docente en la tutoría directamente
-    if (tutoria.docenteNombre && tutoria.docenteApellidos) {
-      return `${tutoria.docenteNombre} ${tutoria.docenteApellidos}`.trim()
-    }
-    
-    return tutoria.docenteNombre || 'Docente'
-  }
-
-  // Función helper para obtener el tema de una tutoría
-  const getTemaFromTutoria = (tutoria) => {
-    if (!tutoria) return ''
-    return tutoria.tema || tutoria.materia || tutoria.idioma || ''
-  }
-
-  // Función helper para obtener el texto completo de una tutoría (docente + tema)
-  const getTutoriaDisplayText = (tutoria) => {
-    const docenteNombre = getDocenteNombreFromTutoria(tutoria)
-    const tema = getTemaFromTutoria(tutoria)
-    
-    if (tema) {
-      return `${docenteNombre} - ${tema}`
-    }
-    return docenteNombre
-  }
-
-  const renderDayView = () => {
-    try {
-      const dates = getDayDates()
-      const hours = getHours()
-      const date = dates[0]
-      const tutoriasDelDia = getTutoriasForDate(date)
-
-      return (
-        <div className="calendar-day-view">
-          <div className="calendar-timezone">GMT-05</div>
-          <div className="calendar-day-indicator">
-            <div className="day-of-week">{formatDate(date)}</div>
-            <div className={`day-number ${isToday(date) ? 'today' : ''}`}>
-              {formatDateNumber(date)}
-            </div>
-          </div>
-          <div className="calendar-day-grid">
-            <div className="calendar-time-column">
-              {hours.map((hour) => (
-                <div key={hour} className="time-cell">
-                  {hour}
-                </div>
-              ))}
-            </div>
-            <div className="calendar-day-column">
-              {hours.map((hour) => {
-                try {
-                  const slotTutorias = getTutoriasForTimeSlot(date, hour)
-                  const slotHorarios = getHorariosForTimeSlot(date, hour)
-                  return (
-                    <div key={hour} className="time-slot">
-                      {slotHorarios
-                        .filter(horario => horario && horario.horaInicio)
-                        .map((horario) => {
-                          try {
-                            // Obtener tutorías vinculadas a este horario
-                            const tutoriasDelHorario = slotTutorias.filter(t => t && t.horarioId === horario.id)
-                            const duration = calculateDuration(horario.horaInicio, horario.horaFin, horario.fecha)
-                            const cuposOcupados = tutoriasDelHorario.length
-                            const cuposTotal = horario.cuposDisponibles || 5
-                            
-                            const absoluteTop = calculateAbsoluteTop(horario.horaInicio)
-                            
-                            return (
-                              <div 
-                                key={horario.id} 
-                                className="horario-block"
-                                style={{ 
-                                  height: `${duration}px`,
-                                  top: `${absoluteTop}px`, // Posición absoluta desde el inicio del calendar-day-column
-                                  zIndex: 1
-                                }}
-                                onClick={() => handleHorarioClick(horario)}
-                              >
-                                <div className="horario-title">{getDocenteNombreFromHorario(horario)}</div>
-                                {tutoriasDelHorario.length > 0 && (
-                                  <div className="horario-cupos-info">
-                                    {cuposOcupados}/{cuposTotal} cupos
-                                  </div>
-                                )}
-                                <div className="horario-time">
-                                  {horario.horaInicio} - {horario.horaFin}
-                                </div>
-                              </div>
-                            )
-                          } catch (error) {
-                            console.warn('Error renderizando horario en día:', error, horario)
-                            return null
-                          }
-                        })}
-
-                      {/* Mostrar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
-                      {slotTutorias
-                        .filter(tutoria => tutoria && tutoria.horaInicio)
-                        .map((tutoria) => {
-                          try {
-                            const duration = calculateDuration(tutoria.horaInicio, tutoria.horaFin, tutoria.fecha)
-                            const absoluteTop = calculateAbsoluteTop(tutoria.horaInicio)
-                            
-                            return (
-                              <div 
-                                key={tutoria.id} 
-                                className="tutoria-block"
-                                style={{ 
-                                  height: `${duration}px`,
-                                  top: `${absoluteTop}px`,
-                                  zIndex: tutoria.horarioId ? 2 : 1
-                                }}
-                                onClick={() => handleTutoriaClick(tutoria)}
-                              >
-                                <div className="tutoria-title">
-                                  {getTutoriaDisplayText(tutoria)}
-                                  {tutoria.horarioId && <span className="tutoria-horario-badge"> (H)</span>}
-                                </div>
-                                <div className="tutoria-time">
-                                  {tutoria.horaInicio} - {tutoria.horaFin}
-                                </div>
-                              </div>
-                            )
-                          } catch (error) {
-                            console.warn('Error renderizando tutoria en día:', error, tutoria)
-                            return null
-                          }
-                        })}
-                    </div>
-                  )
-                } catch (error) {
-                  console.error('Error renderizando hora en día:', error, hour)
-                  return <div key={hour} className="time-slot"></div>
-                }
-              })}
-            </div>
-          </div>
-        </div>
-      )
-    } catch (error) {
-      console.error('Error renderizando vista de día:', error)
-      return (
-        <div className="calendar-day-view">
-          <div className="calendar-timezone">GMT-05</div>
-          <div className="calendar-day-indicator">
-            <div className="day-of-week">Error</div>
-            <div className="day-number">!</div>
-          </div>
-          <div style={{ padding: '20px', color: 'red' }}>
-            Error al renderizar la vista de día. Revisa la consola para más detalles.
-          </div>
-        </div>
-      )
-    }
-  }
-
-  const renderWeekView = () => {
-    try {
-      const dates = getWeekDates()
-      const hours = getHours()
-
-      return (
-        <div className="calendar-week-view" tabIndex={0} role="region" aria-label="Semana del calendario (desplazable)">
-          <div className="calendar-week-header">
-            <div className="calendar-timezone-header">GMT-05</div>
-            {dates.map((date, idx) => (
-              <div key={idx} className="calendar-day-header">
-                <div className="day-of-week">{formatDate(date)}</div>
-                <div className={`day-number ${isToday(date) ? 'today' : ''}`}>
-                  {formatDateNumber(date)}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="calendar-week-grid">
-            <div className="calendar-time-column">
-              {hours.map((hour) => (
-                <div key={hour} className="time-cell">
-                  {hour}
-                </div>
-              ))}
-            </div>
-            {dates.map((date, idx) => {
-              try {
-                const horariosDelDia = getHorariosForDate(date)
-                const tutoriasDelDia = getTutoriasForDate(date)
-                
-                return (
-                  <div key={idx} className="calendar-day-column">
-                    {/* Renderizar bloques de horarios directamente en el calendar-day-column */}
-                    {horariosDelDia
-                      .filter(horario => horario && horario.horaInicio)
-                      .map((horario) => {
-                        try {
-                          const tutoriasDelHorario = tutoriasDelDia.filter(t => t && t.horarioId === horario.id)
-                          const duration = calculateDuration(horario.horaInicio, horario.horaFin, horario.fecha)
-                          const absoluteTop = calculateAbsoluteTop(horario.horaInicio)
-                          const cuposOcupados = tutoriasDelHorario.length
-                          const cuposTotal = horario.cuposDisponibles || 5
-                          
-                          return (
-                            <div 
-                              key={horario.id} 
-                              className="horario-block"
-                              style={{ 
-                                height: `${duration}px`,
-                                top: `${absoluteTop}px` // Posición absoluta desde el inicio del calendar-day-column
-                              }}
-                              onClick={() => handleHorarioClick(horario)}
-                            >
-                              <div className="horario-title">{horario.titulo || 'Horario'}</div>
-                              {tutoriasDelHorario.length > 0 && (
-                                <div className="horario-cupos-info">
-                                  {cuposOcupados}/{cuposTotal}
-                                </div>
-                              )}
-                              <div className="horario-time">
-                                {horario.horaInicio} - {horario.horaFin}
-                              </div>
-                            </div>
-                          )
-                        } catch (error) {
-                          console.warn('Error renderizando horario en semana:', error, horario)
-                          return null
-                        }
-                      })}
-                    
-                    {/* Renderizar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
-                    {tutoriasDelDia
-                      .filter(tutoria => tutoria && tutoria.horaInicio)
-                      .map((tutoria) => {
-                        try {
-                          const duration = calculateDuration(tutoria.horaInicio, tutoria.horaFin, tutoria.fecha)
-                          const absoluteTop = calculateAbsoluteTop(tutoria.horaInicio)
-                          
-                          return (
-                            <div 
-                              key={tutoria.id} 
-                              className="tutoria-block"
-                              style={{ 
-                                height: `${duration}px`,
-                                top: `${absoluteTop}px`,
-                                zIndex: tutoria.horarioId ? 2 : 1
-                              }}
-                              onClick={() => handleTutoriaClick(tutoria)}
-                            >
-                              <div className="tutoria-title">
-                                {getDocenteNombreFromTutoria(tutoria)}
-                                {tutoria.horarioId && <span className="tutoria-horario-badge"> (H)</span>}
-                              </div>
-                              <div className="tutoria-time">
-                                {tutoria.horaInicio} - {tutoria.horaFin}
-                              </div>
-                            </div>
-                          )
-                        } catch (error) {
-                          console.warn('Error renderizando tutoria en semana:', error, tutoria)
-                          return null
-                        }
-                      })}
-                    
-                    {/* Renderizar time-slots para la estructura del grid */}
-                    {hours.map((hour) => (
-                      <div key={hour} className="time-slot"></div>
-                    ))}
-                  </div>
-                )
-              } catch (error) {
-                console.error('Error renderizando día en semana:', error, date)
-                return <div key={idx} className="calendar-day-column"></div>
-              }
-            })}
-          </div>
-        </div>
-      )
-    } catch (error) {
-      console.error('Error renderizando vista de semana:', error)
-      return (
-        <div className="calendar-week-view">
-          <div style={{ padding: '20px', color: 'red' }}>
-            Error al renderizar la vista de semana. Revisa la consola para más detalles.
-          </div>
-        </div>
-      )
-    }
-  }
-
-  const renderMonthView = () => {
-    const dates = getMonthDates()
-    const daysOfWeek = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
-
+  // ---------- Vistas ----------
+  const renderRejilla = (dias) => {
+    const isos = dias.map(isoLocal)
+    const delRango = isos.flatMap((d) => porFecha.get(d) || [])
+    const { ini, fin } = rangoHoras(delRango)
+    const horas = Array.from({ length: fin - ini }, (_, i) => ini + i)
+    const alto = horas.length * HORA_PX
     return (
-      <div className="calendar-month-view">
-        <div className="calendar-month-header">
-          {daysOfWeek.map((day) => (
-            <div key={day} className="month-day-header">{day}</div>
+      <div className="calendar-week-view cal-scroll">
+      <div className={`cal-rejilla cal-rejilla--${dias.length === 1 ? 'dia' : 'semana'}`}>
+        <div className="cal-rejilla__cabecera" aria-hidden="true">
+          <span />
+          {dias.map((d, i) => (
+            <span key={isos[i]} className={`cal-rejilla__dia${isos[i] === hoy ? ' es-hoy' : ''}`}>
+              <span className="cal-rejilla__dia-nombre">{new Intl.DateTimeFormat('es-CO', { weekday: 'short' }).format(d).replace('.', '')}</span>
+              <span className="cal-rejilla__dia-num">{d.getDate()}</span>
+            </span>
           ))}
         </div>
-        <div className="calendar-month-grid">
-        {dates.map((date, idx) => {
-          try {
-            const tutoriasForDate = getTutoriasForDate(date)
-            const horariosForDate = getHorariosForDate(date)
-            const isCurrentMonthDate = isCurrentMonth(date)
-            const isTodayDate = isToday(date)
-            
+        <div className="cal-rejilla__cuerpo" style={{ height: alto }}>
+          <div className="cal-rejilla__horas" aria-hidden="true">
+            {horas.map((h) => (
+              <span key={h} className="cal-rejilla__hora" style={{ top: (h - ini) * HORA_PX }}>{h}:00</span>
+            ))}
+          </div>
+          {dias.map((d, i) => {
+            const delDia = porFecha.get(isos[i]) || []
+            const colocados = repartirCarriles(delDia)
             return (
-              <div 
-                key={idx} 
-                className={`month-day-cell ${!isCurrentMonthDate ? 'other-month' : ''} ${isTodayDate ? 'today' : ''}`}
+              <section
+                key={isos[i]}
+                className={`cal-rejilla__columna${isos[i] === hoy ? ' es-hoy' : ''}`}
+                aria-label={`${fechaLarga(isos[i])}: ${delDia.length} ${delDia.length === 1 ? 'evento' : 'eventos'}`}
               >
-                <div className="month-day-number">{formatDateNumber(date)}</div>
-                <div className="month-day-events">
-                  {/* Mostrar horarios con sus tutorías agendadas */}
-                  {horariosForDate.map((horario) => {
-                    const tutoriasDelHorario = tutoriasForDate.filter(t => t.horarioId === horario.id)
-                    const cuposOcupados = tutoriasDelHorario.length
-                    const cuposTotal = horario.cuposDisponibles || 5
-                    
-                    return (
-                      <button
-                        type="button"
-                        key={`h-${horario.id}`}
-                        className="month-horario-label"
-                        title={`${horario.titulo || 'Horario'} · ${getDocenteNombreFromHorario(horario)}`}
-                        aria-label={`Horario ${horario.horaInicio || ''} de ${getDocenteNombreFromHorario(horario)}`}
-                        onClick={() => handleHorarioClick(horario)}
-                      >
-                        <span className="mlabel-full">{getDocenteNombreFromHorario(horario)}</span>
-                        <span className="mlabel-short" aria-hidden="true">{horario.horaInicio}</span>
-                        {tutoriasDelHorario.length > 0 && (
-                          <span className="month-cupos-badge"> {cuposOcupados}/{cuposTotal}</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                  {/* Mostrar TODAS las tutorías (vinculadas y no vinculadas a horarios) */}
-                  {tutoriasForDate
-                    .map((tutoria) => (
-                      <button
-                        type="button"
-                        key={tutoria.id}
-                        className="month-tutoria-label"
-                        title={getTutoriaDisplayText(tutoria)}
-                        aria-label={`Tutoría ${tutoria.horaInicio || ''}: ${getTutoriaDisplayText(tutoria)}`}
-                        onClick={() => handleTutoriaClick(tutoria)}
-                      >
-                        <span className="mlabel-full">{getTutoriaDisplayText(tutoria)}</span>
-                        <span className="mlabel-short" aria-hidden="true">{tutoria.horaInicio}</span>
-                        {tutoria.horarioId && <span className="month-tutoria-horario-badge"> (H)</span>}
-                      </button>
-                    ))}
-                </div>
-              </div>
+                {horas.map((h) => <span key={h} className="cal-rejilla__linea" style={{ top: (h - ini) * HORA_PX }} aria-hidden="true" />)}
+                {colocados.map(({ evento, carril, carriles }) => {
+                  const top = ((minutos(evento.inicio) - ini * 60) / 60) * HORA_PX
+                  const altura = Math.max(((minutos(evento.fin) - minutos(evento.inicio)) / 60) * HORA_PX - 2, 26)
+                  const ancho = 100 / carriles
+                  return (
+                    <Evento
+                      key={evento.key}
+                      evento={evento}
+                      variante={carriles > 2 && dias.length > 1 ? 'estrecho' : 'bloque'}
+                      onAbrir={abrir}
+                      corto={altura < 80}
+                      estilo={{ top, height: altura, left: `calc(${carril * ancho}% + 2px)`, width: `calc(${ancho}% - 4px)` }}
+                    />
+                  )
+                })}
+              </section>
             )
-          } catch (error) {
-            console.error('Error renderizando día del mes:', error, date)
-            return (
-              <div key={idx} className="month-day-cell">
-                <div className="month-day-number">{formatDateNumber(date)}</div>
-              </div>
-            )
-          }
-        })}
+          })}
         </div>
       </div>
-    )
-  }
-
-  const renderYearView = () => {
-    const months = getYearMonths()
-    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-    const daysOfWeek = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
-
-    return (
-      <div className="calendar-year-view">
-        {months.map((month, monthIdx) => {
-          const year = month.getFullYear()
-          const monthNum = month.getMonth()
-          const firstDay = new Date(year, monthNum, 1)
-          const lastDay = new Date(year, monthNum + 1, 0)
-          const startDate = new Date(firstDay)
-          startDate.setDate(startDate.getDate() - firstDay.getDay())
-          
-          const monthDates = []
-          for (let i = 0; i < 42; i++) {
-            const date = new Date(startDate)
-            date.setDate(startDate.getDate() + i)
-            monthDates.push(date)
-          }
-
-          return (
-            <div key={monthIdx} className="year-month">
-              <div className="year-month-name">{monthNames[monthNum]}</div>
-              <div className="year-month-header">
-                {daysOfWeek.map((day) => (
-                  <div key={day} className="year-day-header">{day}</div>
-                ))}
-              </div>
-              <div className="year-month-grid">
-                {monthDates.map((date, dateIdx) => {
-                  try {
-                    const tutoriasForDate = getTutoriasForDate(date)
-                    const horariosForDate = getHorariosForDate(date)
-                    const isCurrentMonthDate = date.getMonth() === monthNum
-                    const isTodayDate = isToday(date)
-                    
-                    return (
-                      <div 
-                        key={dateIdx} 
-                        className={`year-day-cell ${!isCurrentMonthDate ? 'other-month' : ''} ${isTodayDate ? 'today' : ''}`}
-                        onClick={() => {
-                          // Cambiar a vista de semana y mostrar la fecha seleccionada
-                          setCurrentDate(new Date(date))
-                          setViewMode('semana')
-                        }}
-                      >
-                        <div className="year-day-number-wrapper">
-                          {isTodayDate ? (
-                            <div className="year-day-badge">{formatDateNumber(date)}</div>
-                          ) : (
-                            <div className="year-day-number-text">{formatDateNumber(date)}</div>
-                          )}
-                        </div>
-                        {(tutoriasForDate.length > 0 || horariosForDate.length > 0) && (
-                          <div className="year-day-indicators">
-                            {tutoriasForDate.length > 0 && (
-                              <div
-                                className="year-day-indicator tutoria-indicator"
-                                title={`${tutoriasForDate.length} tutoría(s) - Click para ver detalles`}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // Cambiar a vista de semana primero, luego abrir el modal
-                                  setCurrentDate(new Date(date))
-                                  setViewMode('semana')
-                                  // Pequeño delay para que la vista cambie primero
-                                  setTimeout(() => {
-                                    handleTutoriaClick(tutoriasForDate[0])
-                                  }, 100)
-                                }}
-                              >
-                                <span className="indicator-dot tutoria-dot"></span>
-                                {tutoriasForDate.length > 1 && (
-                                  <span className="indicator-count">{tutoriasForDate.length}</span>
-                                )}
-                              </div>
-                            )}
-                            {horariosForDate.length > 0 && (
-                              <div
-                                className="year-day-indicator horario-indicator"
-                                title={`${horariosForDate.length} horario(s) - Click para ver detalles`}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // Cambiar a vista de semana primero, luego abrir el modal
-                                  setCurrentDate(new Date(date))
-                                  setViewMode('semana')
-                                  // Pequeño delay para que la vista cambie primero
-                                  setTimeout(() => {
-                                    handleHorarioClick(horariosForDate[0])
-                                  }, 100)
-                                }}
-                              >
-                                <span className="indicator-dot horario-dot"></span>
-                                {horariosForDate.length > 1 && (
-                                  <span className="indicator-count">{horariosForDate.length}</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  } catch (error) {
-                    console.error('Error renderizando día del año:', error, date)
-                    return (
-                      <div key={dateIdx} className="year-day-cell">
-                        <div className="year-day-number-inner">
-                          <div className="year-day-number-text">{formatDateNumber(date)}</div>
-                        </div>
-                      </div>
-                    )
-                  }
-                })}
-              </div>
-            </div>
-          )
-        })}
       </div>
     )
   }
 
-  // Manejo de estados de carga y error
+  const renderMes = () => {
+    const dias = diasDeVista('mes', fecha)
+    const mes = fecha.getMonth()
+    return (
+      <div className="cal-mes">
+        <div className="cal-mes__cabecera" aria-hidden="true">
+          {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => <span key={d}>{d}</span>)}
+        </div>
+        {Array.from({ length: 6 }, (_, s) => (
+          <div key={s} className="cal-mes__semana">
+            {dias.slice(s * 7, s * 7 + 7).map((d) => {
+              const iso = isoLocal(d)
+              const delDia = porFecha.get(iso) || []
+              const fuera = d.getMonth() !== mes
+              return (
+                <div key={iso} className={`cal-mes__celda${fuera ? ' es-fuera' : ''}${iso === hoy ? ' es-hoy' : ''}`}>
+                  <button
+                    type="button"
+                    className="cal-mes__num"
+                    onClick={() => irADia(iso)}
+                    aria-label={`Ver el ${fechaLarga(iso)} (${delDia.length} ${delDia.length === 1 ? 'evento' : 'eventos'})`}
+                  >
+                    {d.getDate()}
+                  </button>
+                  <div className="cal-mes__eventos">
+                    {delDia.slice(0, MAX_MES).map((e) => <Evento key={e.key} evento={e} variante="mes" onAbrir={abrir} />)}
+                    {delDia.length > MAX_MES && (
+                      <button type="button" className="cal-mes__mas" onClick={() => irADia(iso)}>
+                        {delDia.length - MAX_MES} más<span className="sr-only"> el {fechaLarga(iso)}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const renderAnio = () => {
+    const año = fecha.getFullYear()
+    return (
+      <ul className="cal-anio">
+        {Array.from({ length: 12 }, (_, m) => {
+          const prefijo = `${año}-${String(m + 1).padStart(2, '0')}`
+          const delMes = visibles.filter((e) => e.fecha.startsWith(prefijo))
+          const cuenta = (t) => delMes.filter((e) => e.tipo === t).length
+          return (
+            <li key={m}>
+              <button
+                type="button"
+                className="cal-anio__mes"
+                onClick={() => { setFecha(new Date(año, m, 1)); setVista('mes') }}
+              >
+                <span className="cal-anio__nombre">{nombreMes(m)}</span>
+                {delMes.length === 0 ? (
+                  <span className="cal-anio__vacio">Sin eventos</span>
+                ) : (
+                  <span className="cal-anio__cuentas">
+                    {['disponible', 'tutoria', 'ocupado'].filter((t) => cuenta(t) > 0).map((t) => (
+                      <span key={t} className={`cal-anio__cuenta cal-anio__cuenta--${t}`}>
+                        <Icon name={TIPOS_EVENTO[t].icon} size={14} />{cuenta(t)} {TIPOS_EVENTO[t].label.toLowerCase()}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
+  // Móvil: lista por día con sus franjas
+  const renderLista = (dias) => {
+    const conEventos = dias.map(isoLocal).filter((iso) => (porFecha.get(iso) || []).length > 0)
+    if (conEventos.length === 0) {
+      return <p className="cal-vacio"><Icon name="calendar" size={18} />No hay horarios ni tutorías en este periodo.</p>
+    }
+    return (
+      <div className="cal-lista">
+        {conEventos.map((iso) => (
+          <section key={iso} className={`cal-lista__dia${iso === hoy ? ' es-hoy' : ''}`} aria-labelledby={`cal-dia-${iso}`}>
+            <h3 id={`cal-dia-${iso}`} className="cal-lista__fecha">
+              {fechaLarga(iso)}{iso === hoy && <span className="cal-lista__hoy">Hoy</span>}
+            </h3>
+            <ul>
+              {porFecha.get(iso).map((e) => (
+                <li key={e.key}>
+                  <Evento evento={e} variante="lista" onAbrir={abrir} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  const renderVista = () => {
+    if (vista === 'año') return renderAnio()
+    const dias = vista === 'mes' ? diasDeVista('mes', fecha).filter((d) => d.getMonth() === fecha.getMonth()) : diasDeVista(vista, fecha)
+    if (movil) return renderLista(dias)
+    if (vista === 'mes') return renderMes()
+    return renderRejilla(diasDeVista(vista, fecha))
+  }
+
   if (loading) {
     return (
       <div className="horarios-page">
-        <div className="page-header">
-          <div>
-            <h1>Horarios y Tutorías</h1>
-            <p>Cargando datos desde la API...</p>
-          </div>
-        </div>
+        <p className="cal-vacio" role="status">Cargando horarios…</p>
       </div>
     )
   }
@@ -1003,19 +369,12 @@ const Horarios = () => {
         <div className="page-header">
           <div>
             <h1>Horarios y Tutorías</h1>
-            <div style={{ 
-              padding: '20px', 
-              background: '#fee', 
-              border: '1px solid #fcc', 
-              borderRadius: '8px',
-              color: '#c33',
-              marginTop: '20px'
-            }}>
-              <h3>Error al cargar datos</h3>
-              <p><strong>Error:</strong> {error}</p>
-            </div>
           </div>
         </div>
+        <p className="banner banner--error" role="alert">
+          <Icon name="alert" size={18} />
+          <span>No se pudieron cargar los horarios: {error}</span>
+        </p>
       </div>
     )
   }
@@ -1025,7 +384,7 @@ const Horarios = () => {
       <div className="page-header">
         <div>
           <h1>Horarios y Tutorías</h1>
-          <p>Gestiona tus horarios y tutorías programadas</p>
+          <p>Disponibilidad de los docentes por día y franja, y tutorías programadas</p>
         </div>
         <div className="header-buttons">
           <button className="btn-secondary" onClick={() => setShowHorarioForm(true)}>
@@ -1037,90 +396,97 @@ const Horarios = () => {
       {(showHorarioForm || horarioToEdit) && (
         <FormularioHorario
           horario={horarioToEdit}
-          onClose={() => {
-            setShowHorarioForm(false)
-            setHorarioToEdit(null)
-          }}
-          onSave={() => {
-            setShowHorarioForm(false)
-            setHorarioToEdit(null)
-          }}
+          onClose={() => { setShowHorarioForm(false); setHorarioToEdit(null) }}
+          onSave={() => { setShowHorarioForm(false); setHorarioToEdit(null) }}
         />
       )}
 
       {selectedTutoria && (
-        <TutoriaDetailModal
-          tutoria={selectedTutoria}
-          onClose={() => setSelectedTutoria(null)}
-          onEdit={() => {}}
-        />
+        <TutoriaDetailModal tutoria={selectedTutoria} onClose={() => setSelectedTutoria(null)} onEdit={() => {}} />
       )}
 
       {selectedHorario && (
         <HorarioDetailModal
           horario={selectedHorario}
           onClose={() => setSelectedHorario(null)}
-          onEdit={(horario) => {
-            setHorarioToEdit(horario)
-            setSelectedHorario(null)
-          }}
+          onEdit={(h) => { setHorarioToEdit(h); setSelectedHorario(null) }}
           onDelete={async (id) => {
             if (await confirm({ title: 'Eliminar horario', message: '¿Seguro que deseas eliminar este horario? Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true })) {
               try {
                 await deleteHorario(id)
                 setSelectedHorario(null)
-              } catch (error) {
-                toast.error(`Error: ${error.message || 'No se pudo eliminar el horario'}`)
+              } catch (err) {
+                toast.error(`Error: ${err.message || 'No se pudo eliminar el horario'}`)
               }
             }
           }}
         />
       )}
 
-      <div className="calendar-section">
-        <div className="calendar-header">
-          <div className="calendar-nav">
-            <button onClick={goToToday} className="nav-btn today-btn">Hoy</button>
-            <button onClick={() => navigateDate(-1)} className="nav-btn">‹</button>
-            <button onClick={() => navigateDate(1)} className="nav-btn">›</button>
-            <span className="date-range">
-              {viewMode === 'dia' && formatDayDate()}
-              {viewMode === 'semana' && formatMonthYear()}
-              {viewMode === 'mes' && formatMonthYear()}
-              {viewMode === 'año' && currentDate.getFullYear()}
-            </span>
-          </div>
-          <div className="calendar-header-right">
-            <div className="calendar-legend">
-              <div className="legend-item">
-                <div className="legend-color legend-horario"></div>
-                <span className="legend-text">Horarios</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-color legend-tutoria"></div>
-                <span className="legend-text">Tutorías</span>
-              </div>
+      <div className={`cal-layout${docenteSel !== TODOS ? ' cal-layout--con-docente' : ''}`}>
+        <section className="calendar-section cal" aria-labelledby="cal-periodo">
+          <div className="cal-barra">
+            <div className="cal-nav">
+              <button type="button" onClick={() => setFecha(new Date())} className="btn btn--secondary btn--sm">Hoy</button>
+              <button type="button" onClick={() => setFecha((f) => moverFecha(vista, f, -1))} className="icon-btn" aria-label="Periodo anterior">
+                <Icon name="chevronLeft" size={20} />
+              </button>
+              <button type="button" onClick={() => setFecha((f) => moverFecha(vista, f, 1))} className="icon-btn" aria-label="Periodo siguiente">
+                <Icon name="chevronRight" size={20} />
+              </button>
+              <h2 id="cal-periodo" className="cal-periodo" aria-live="polite">{tituloPeriodo(vista, fecha)}</h2>
             </div>
-            <div className="calendar-actions">
-              <select 
-                aria-label="Vista del calendario"
-                value={viewMode} 
-                onChange={(e) => setViewMode(e.target.value)}
-                className="view-select"
-              >
-                <option value="dia">Día</option>
-                <option value="semana">Semana</option>
-                <option value="mes">Mes</option>
-                <option value="año">Año</option>
-              </select>
+            <div className="cal-filtros">
+              <label className="cal-filtro">
+                <span className="cal-filtro__label">Docente o tutor</span>
+                <select className="select" value={docenteSel} onChange={(e) => setDocenteSel(e.target.value)}>
+                  <option value={TODOS}>Todos los docentes</option>
+                  {docentesConEventos.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+                </select>
+              </label>
+              <label className="cal-filtro">
+                <span className="cal-filtro__label">Vista</span>
+                <select className="select" aria-label="Vista del calendario" value={vista} onChange={(e) => setVista(e.target.value)}>
+                  <option value="dia">Día</option>
+                  <option value="semana">Semana</option>
+                  <option value="mes">Mes</option>
+                  <option value="año">Año</option>
+                </select>
+              </label>
             </div>
           </div>
-        </div>
 
-        {viewMode === 'dia' && renderDayView()}
-        {viewMode === 'semana' && renderWeekView()}
-        {viewMode === 'mes' && renderMonthView()}
-        {viewMode === 'año' && renderYearView()}
+          <ul className="cal-leyenda" aria-label="Leyenda">
+            {Object.entries(TIPOS_EVENTO).map(([k, t]) => (
+              <li key={k} className={`cal-leyenda__item cal-leyenda__item--${k}`}>
+                <span className="cal-leyenda__muestra"><Icon name={t.icon} size={12} /></span>
+                {k === 'disponible' ? 'Horario disponible' : k === 'tutoria' ? 'Tutoría programada' : 'Horario ocupado'}
+              </li>
+            ))}
+          </ul>
+
+          {renderVista()}
+        </section>
+
+        {docenteSel !== TODOS && (
+          <aside className="cal-docente" aria-labelledby="cal-docente-titulo">
+            <div className="cal-docente__head">
+              <h2 id="cal-docente-titulo" className="cal-docente__nombre">{nombreSel}</h2>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDocenteSel(TODOS)}>
+                <Icon name="close" size={16} /> Quitar filtro
+              </button>
+            </div>
+            <DisponibilidadDocente
+              sesiones={sesionesDocente}
+              nombre={nombreSel}
+              renderAccion={(s, etiqueta) => (
+                <button type="button" className="btn btn--secondary btn--sm" onClick={() => setSelectedHorario(s.horario)} aria-label={`Ver detalle del ${etiqueta}`}>
+                  Ver
+                </button>
+              )}
+            />
+          </aside>
+        )}
       </div>
     </div>
   )

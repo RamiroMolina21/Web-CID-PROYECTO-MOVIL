@@ -6,12 +6,12 @@ import { getErrorMessage } from '../../lib/apiClient'
  * Bloque del Dashboard con estados propios: un bloque que falla no rompe el resto.
  * status: 'loading' | 'error' | 'ready'
  */
-const DashPanel = ({ title, subtitle, actions, status = 'ready', error, onRetry, skeleton = 'list', className = '', children, footer, headingLevel = 2 }) => {
+const DashPanel = ({ id: anchorId, title, subtitle, actions, status = 'ready', error, onRetry, skeleton = 'list', className = '', children, footer, headingLevel = 2, hideTitle = false }) => {
   const id = useId()
   const Heading = `h${headingLevel}`
   return (
-    <section className={`dash-panel ${className}`.trim()} aria-labelledby={`${id}-t`} aria-busy={status === 'loading' || undefined}>
-      <header className="dash-panel__head">
+    <section id={anchorId} className={`dash-panel ${className}`.trim()} aria-labelledby={`${id}-t`} aria-busy={status === 'loading' || undefined} tabIndex={anchorId ? -1 : undefined}>
+      <header className={`dash-panel__head${hideTitle ? ' sr-only' : ''}`}>
         <div className="dash-panel__heading">
           <Heading id={`${id}-t`} className="dash-panel__title">{title}</Heading>
           {subtitle && <p className="dash-panel__subtitle">{subtitle}</p>}

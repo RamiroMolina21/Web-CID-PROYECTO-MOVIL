@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useData } from '../context/DataContext'
 import { useToast } from './ui/Feedback'
 import './FormularioTutoria.css'
 import Icon from './ui/Icon'
 
+// Contrato POST /Tutoria: cupos entero 1–1000 (obligatorio). Valor inicial razonable para una tutoría de idiomas.
+export const CUPOS_POR_DEFECTO = 5
+export const validarCupos = (valor) => {
+  const n = Number(valor)
+  if (String(valor ?? '').trim() === '') return 'Indica los cupos máximos.'
+  if (!Number.isInteger(n) || n < 1 || n > 1000) return 'Debe ser un número entero entre 1 y 1000.'
+  return ''
+}
+
 const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
-  const { docentes, tutorias, horarios, addTutoria, updateTutoria } = useData()
+  const { docentes, tutorias, addTutoria, updateTutoria } = useData()
   const toast = useToast()
   const isEditing = !!tutoria
   const hasDocentes = docentes && docentes.length > 0
@@ -17,6 +26,9 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
   
   const [horarioSeleccionadoId, setHorarioSeleccionadoId] = useState(null)
   const [agendarTodasLasFechas, setAgendarTodasLasFechas] = useState(false)
+  const [errorCupos, setErrorCupos] = useState('')
+  const cuposRef = useRef(null)
+  const cuposIniciales = tutoria?.cupos ?? CUPOS_POR_DEFECTO
   
   const [formData, setFormData] = useState({
     docenteId: tutoria?.docenteId || horario?.docenteId || '',
@@ -26,7 +38,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
     modalidad: tutoria?.modalidad || '',
     fecha: tutoria?.fecha || (esRecurrente && fechasDisponibles.length > 0 ? fechasDisponibles[0] : horario?.fecha) || new Date().toISOString().split('T')[0],
     horaInicio: tutoria?.horaInicio || horario?.horaInicio || '09:00',
-    horaFin: tutoria?.horaFin || horario?.horaFin || '10:00'
+    horaFin: tutoria?.horaFin || horario?.horaFin || '10:00',
+    cuposMax: String(cuposIniciales),
   })
   
   // Inicializar y actualizar el horario seleccionado
@@ -56,7 +69,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         modalidad: tutoria.modalidad || '',
         fecha: tutoria.fecha || new Date().toISOString().split('T')[0],
         horaInicio: tutoria.horaInicio || '09:00',
-        horaFin: tutoria.horaFin || '10:00'
+        horaFin: tutoria.horaFin || '10:00',
+        cuposMax: String(tutoria.cupos ?? CUPOS_POR_DEFECTO),
       })
     }
   }, [tutoria])
@@ -67,6 +81,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       ...prev,
       [name]: value
     }))
+    if (name === 'cuposMax' && errorCupos) setErrorCupos('')
   }
 
   const handleSubmit = async (e) => {
@@ -81,23 +96,19 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       return
     }
 
+    const errCupos = validarCupos(formData.cuposMax)
+    if (errCupos) {
+      setErrorCupos(errCupos)
+      requestAnimationFrame(() => cuposRef.current?.focus())
+      return
+    }
+    const cuposMax = Number(formData.cuposMax)
+
     // Obtener el ID del horario correcto (puede ser el seleccionado por fecha si es recurrente)
     const targetHorarioId = horarioSeleccionadoId || horario?.id || tutoria?.horarioId || null
     if (!targetHorarioId) {
       toast.error('Por favor selecciona un horario para agendar la tutoría')
       return
-    }
-
-    // Capacity check when scheduling into a horario
-    if (targetHorarioId) {
-      const horarioObj = horarios.find(h => h.id === targetHorarioId) || horario
-      const capacity = horarioObj ? horarioObj.cuposDisponibles : null
-      // count existing tutorias for this horario, excluding current tutoria if editing
-      const existingCount = tutorias.filter(t => t.horarioId === targetHorarioId && t.id !== (tutoria?.id || null)).length
-      if (capacity !== null && capacity !== undefined && existingCount >= capacity) {
-        toast.error('Este horario ya alcanzó su cupo máximo. No se pueden agendar más estudiantes.')
-        return
-      }
     }
 
     try {
@@ -110,7 +121,9 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           modalidad: formData.modalidad,
           fecha: formData.fecha,
           horaInicio: formData.horaInicio,
-          horaFin: formData.horaFin
+          horaFin: formData.horaFin,
+          // PUT: cupos opcional; solo se envía si cambió (409 si queda por debajo de los inscritos)
+          ...(String(cuposMax) !== String(tutoria.cupos ?? '') ? { cuposMax } : {}),
         })
       } else {
         // Si es recurrente y se quiere agendar en todas las fechas
@@ -123,9 +136,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
             })
             if (!horarioParaFecha) return false
             
-            const occupied = tutorias.filter(t => t.horarioId === horarioParaFecha.id).length
-            const capacity = horarioParaFecha.cuposDisponibles || 5
-            return occupied < capacity
+            // Una tutoría por horario: se omiten las fechas que ya tienen una
+            return !tutorias.some(t => t.horarioId === horarioParaFecha.id)
           })
           
           if (fechasParaAgendar.length === 0) {
@@ -144,13 +156,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
             if (!horarioParaFecha) continue
             
             // Verificar capacidad y si ya tiene tutorías antes de crear
-            const tutoriasEnHorario = tutorias.filter(t => t.horarioId === horarioParaFecha.id)
-            const occupied = tutoriasEnHorario.length
-            const capacity = horarioParaFecha.cuposDisponibles || 5
-            const tieneTutoria = tutoriasEnHorario.length > 0
-            
-            // Omitir si está llena o ya tiene una tutoría asignada
-            if (occupied >= capacity || tieneTutoria) {
+            // Omitir si ya tiene una tutoría asignada
+            if (tutorias.some(t => t.horarioId === horarioParaFecha.id)) {
               console.warn(`La fecha ${fecha} ya está ocupada o tiene tutoría asignada, se omite`)
               continue
             }
@@ -165,7 +172,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
                 modalidad: formData.modalidad,
                 fecha: fecha,
                 horaInicio: formData.horaInicio,
-                horaFin: formData.horaFin
+                horaFin: formData.horaFin,
+                cuposMax,
               })
               tutoriasCreadas.push(nuevaTutoria)
             } catch (error) {
@@ -199,7 +207,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           modalidad: formData.modalidad,
           fecha: formData.fecha,
           horaInicio: formData.horaInicio,
-          horaFin: formData.horaFin
+          horaFin: formData.horaFin,
+          cuposMax,
         })
         }
       }
@@ -216,13 +225,14 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
       </div>
       <form onSubmit={handleSubmit} className="formulario-tutoria-form">
         <div className="form-group">
-          <label>Docente/Tutor *</label>
+          <label htmlFor="ft-docenteId">Docente/Tutor *</label>
           {!hasDocentes && (
             <div className="form-warning" style={{ background: '#fff4e5', padding: '10px', borderRadius: 6, color: '#663c00', marginBottom: 10 }}>
               No hay docentes/tutores registrados. Por favor agrega uno antes de agendar la tutoría.
             </div>
           )}
           <select
+            id="ft-docenteId"
             name="docenteId"
             value={formData.docenteId}
             onChange={handleChange}
@@ -240,11 +250,12 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         </div>
 
         <div className="form-group">
-          <label>Fecha *</label>
+          <label htmlFor="ft-fecha">Fecha *</label>
           {esRecurrente && fechasDisponibles.length > 0 ? (
             <>
               {!agendarTodasLasFechas && (
                 <select
+                  id="ft-fecha"
                   name="fecha"
                   value={formData.fecha}
                   onChange={handleChange}
@@ -259,13 +270,8 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
                   })
                   if (!horarioParaFecha) return null
                   
-                  const tutoriasEnHorario = tutorias.filter(t => t.horarioId === horarioParaFecha.id)
-                  const occupied = tutoriasEnHorario.length
-                  const capacity = horarioParaFecha.cuposDisponibles || 5
-                  const tieneTutoria = tutoriasEnHorario.length > 0
-                  const disponible = occupied < capacity && !tieneTutoria
-                  
-                  if (!disponible) return null
+                  // Una tutoría por horario: solo se ofrecen las fechas libres
+                  if (tutorias.some(t => t.horarioId === horarioParaFecha.id)) return null
                     
                     const dateObj = new Date(fecha + 'T00:00:00')
                     const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -275,7 +281,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
                     
                     return (
                       <option key={fecha} value={fecha}>
-                        {fechaFormateada} (Cupos: {capacity - occupied}/{capacity})
+                        {fechaFormateada}
                       </option>
                     )
                   })}
@@ -328,6 +334,7 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           ) : (
           <input
             type="date"
+            id="ft-fecha"
             name="fecha"
             value={formData.fecha}
             onChange={handleChange}
@@ -340,9 +347,10 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
 
         <div className="form-row">
           <div className="form-group">
-            <label>Hora Inicio *</label>
+            <label htmlFor="ft-horaInicio">Hora Inicio *</label>
             <input
               type="time"
+              id="ft-horaInicio"
               name="horaInicio"
               value={formData.horaInicio}
               onChange={handleChange}
@@ -353,9 +361,10 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           </div>
 
           <div className="form-group">
-            <label>Hora Fin *</label>
+            <label htmlFor="ft-horaFin">Hora Fin *</label>
             <input
               type="time"
+              id="ft-horaFin"
               name="horaFin"
               value={formData.horaFin}
               onChange={handleChange}
@@ -366,12 +375,32 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
           </div>
         </div>
 
-        {/* Campo removido - los cupos ahora se muestran en el modal */}
+        <div className="form-group">
+          <label htmlFor="ft-cupos">Cupos máximos *</label>
+          <input
+            ref={cuposRef}
+            id="ft-cupos"
+            type="number"
+            name="cuposMax"
+            value={formData.cuposMax}
+            onChange={handleChange}
+            // Sin min/max/required nativos: la validación propia muestra el error junto al campo
+            step="1"
+            inputMode="numeric"
+            aria-required="true"
+            className="form-input"
+            aria-invalid={!!errorCupos}
+            aria-describedby={errorCupos ? 'ft-cupos-ayuda ft-cupos-error' : 'ft-cupos-ayuda'}
+          />
+          <p className="form-hint ft-hint" id="ft-cupos-ayuda">Máximo de estudiantes que pueden inscribirse (1 a 1000).</p>
+          {errorCupos && <p className="ft-error" id="ft-cupos-error">{errorCupos}</p>}
+        </div>
 
         <div className="form-group">
-          <label>Tema a Tratar</label>
+          <label htmlFor="ft-tema">Tema a Tratar</label>
           <input
             type="text"
+            id="ft-tema"
             name="tema"
             value={formData.tema}
             onChange={handleChange}
@@ -381,8 +410,9 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         </div>
 
         <div className="form-group">
-          <label>Idioma *</label>
+          <label htmlFor="ft-idioma">Idioma *</label>
           <select
+            id="ft-idioma"
             name="idioma"
             value={formData.idioma}
             onChange={handleChange}
@@ -400,8 +430,9 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         </div>
 
         <div className="form-group">
-          <label>Modalidad *</label>
+          <label htmlFor="ft-modalidad">Modalidad *</label>
           <select
+            id="ft-modalidad"
             name="modalidad"
             value={formData.modalidad}
             onChange={handleChange}
@@ -416,8 +447,9 @@ const FormularioTutoria = ({ horario, tutoria, onClose, isModal }) => {
         </div>
 
         <div className="form-group">
-          <label>Nivel *</label>
+          <label htmlFor="ft-nivel">Nivel *</label>
           <select
+            id="ft-nivel"
             name="nivel"
             value={formData.nivel}
             onChange={handleChange}

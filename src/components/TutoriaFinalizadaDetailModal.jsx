@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { aulaLimpia } from '../lib/aula'
 import './TutoriaFinalizadaDetailModal.css'
 import { useData } from '../context/DataContext'
 import { useToast, useConfirm } from './ui/Feedback'
@@ -306,10 +307,10 @@ const TutoriaFinalizadaDetailModal = ({ tutoria, onClose }) => {
             <Icon name="mapPin" size={18} className="tutoria-finalizada-detail-icon" />
             <span>{modalidad}</span>
           </div>
-          {horarioEspacio && (
+          {aulaLimpia(horarioEspacio) && (
             <div className="tutoria-finalizada-detail-item">
               <Icon name="building" size={18} className="tutoria-finalizada-detail-icon" />
-              <span>{horarioEspacio}</span>
+              <span>{aulaLimpia(horarioEspacio)}</span>
             </div>
           )}
           {estudiantesInfo.length > 0 && (

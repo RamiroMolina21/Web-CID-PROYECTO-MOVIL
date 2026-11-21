@@ -1,0 +1,699 @@
+/* =========================================================================
+   Dashboard reestructurado (4 niveles): KPIs → operación → calidad y análisis.
+   Compacto: menos altura por bloque, explicaciones en tooltips, detalle bajo demanda.
+   Se carga después de Dashboard.css, cuyas reglas siguen aplicando a filas de detalle,
+   barras, gráfica y tabla de carga.
+   ========================================================================= */
+
+.dash {
+  gap: 1rem;
+}
+
+.dash .page-head {
+  margin-bottom: 0;
+}
+
+.dash-panel {
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 10px);
+}
+
+.dash-panel__head {
+  padding: 0.75rem 1rem 0.5rem;
+  align-items: center;
+}
+
+.dash-panel__title {
+  font-size: 0.9375rem;
+}
+
+.dash-panel__subtitle {
+  margin-top: 0.0625rem;
+  font-size: 0.75rem;
+}
+
+.dash-panel__body {
+  padding: 0 1rem 0.875rem;
+}
+
+.dash-panel:focus {
+  outline: none;
+}
+
+.dash-link--button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- Tooltip (Hint) ---------- */
+.hint {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.hint__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: help;
+}
+
+.hint__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-heading);
+}
+
+.hint__pop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: 0.5rem 0.625rem;
+  border-radius: 8px;
+  background: var(--text-heading);
+  color: var(--bg-card);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-2px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  pointer-events: none;
+}
+
+.hint--end .hint__pop { right: 0; }
+.hint--start .hint__pop { left: 0; }
+
+.hint:hover .hint__pop,
+.hint:focus-within .hint__pop {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+/* ---------- Nivel 1: KPIs ---------- */
+.dash-kpis-panel {
+  border: 0;
+  background: transparent;
+}
+
+.dash-kpis-panel .dash-panel__body {
+  padding: 0;
+}
+
+.kpi-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.75rem), 1fr));
+}
+
+.kpi-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-card);
+  transition: border-color 0.15s ease;
+}
+
+.kpi-card__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  padding: 0.75rem 0.875rem 0.875rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: inherit;
+}
+
+a.kpi-card__inner:hover {
+  background: var(--bg-hover);
+}
+
+.kpi-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 1.5rem;
+}
+
+.kpi-card__icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.kpi-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.kpi-card__value {
+  margin-top: 0.125rem;
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+.kpi-card__unit {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.kpi-card__context,
+.kpi-card__delta {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.kpi-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kpi-card .dash-meter {
+  margin-top: 0.25rem;
+}
+
+.kpi-card__go {
+  position: absolute;
+  right: 0.625rem;
+  bottom: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+a.kpi-card__inner:hover .kpi-card__go,
+a.kpi-card__inner:focus-visible .kpi-card__go {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.kpi-card > .hint {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.5rem;
+}
+
+/* Color semántico solo en "Vencidas", y solo cuando hay que actuar */
+.kpi-card--alert {
+  border-color: var(--error-border);
+}
+
+.kpi-card--alert .kpi-card__icon {
+  background: var(--error-bg);
+  color: var(--danger-strong);
+}
+
+.kpi-card--alert .kpi-card__value {
+  color: var(--danger-strong);
+}
+
+.kpi-card--ok .kpi-card__icon {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+/* ---------- Nivel 2: operación ---------- */
+.dash-grid--ops,
+.dash-grid--analysis {
+  gap: 1rem;
+}
+
+.dash-stack {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-width: 0;
+}
+
+/* Una columna: lo que requiere atención va antes que la actividad */
+@container dash (max-width: 859px) {
+  .dash-grid--ops > .dash-area-attention {
+    order: -1;
+  }
+}
+
+/* Dos columnas desde ~860 px de contenido (1280 px de ventana con el menú lateral) */
+@container dash (min-width: 860px) {
+  .dash-grid--ops {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+@container dash (min-width: 700px) {
+  .dash-grid--analysis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-area-quality--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Calidad a lo ancho: los tres indicadores en fila */
+@container panel (min-width: 620px) {
+  .q-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .q-tile + .q-tile {
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--border-color);
+  }
+}
+
+.trend__chart {
+  height: 220px;
+}
+
+.trend__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.trend .viz-legend {
+  font-size: 0.75rem;
+}
+
+/* Atención compacta: una línea por asunto */
+.att-item {
+  padding: 0.5rem 0;
+}
+
+.att-item:first-child {
+  padding-top: 0;
+}
+
+.att-item__main {
+  grid-template-columns: 1.75rem auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon count title hint"
+    "actions actions actions actions";
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
+}
+
+.att-item__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.att-item__count {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.att-item__title {
+  grid-area: title;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+.att-item__main > .hint {
+  grid-area: hint;
+}
+
+.att-item__actions {
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.att-item__toggle,
+.att-item__link,
+.att-history__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 32px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--info-text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.att-item__toggle:hover,
+.att-item__link:hover,
+.att-history__toggle:hover {
+  background: var(--bg-hover);
+}
+
+.att-item__toggle .icon,
+.att-history__toggle .icon {
+  transition: transform 0.18s var(--ease-out);
+}
+
+.is-flipped {
+  transform: rotate(180deg);
+}
+
+/* Solo lo que pide acción llama la atención: lo informativo va en neutro */
+.att-item--info .att-item__icon,
+[data-theme='dark'] .att-item--info .att-item__icon {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.att-item--info .att-item__count {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.att-detail {
+  margin: 0.5rem 0 0 2.25rem;
+}
+
+.att-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--success-text);
+}
+
+.att-history {
+  margin-top: 0.5rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.att-history__toggle {
+  margin-left: -0.5rem;
+  color: var(--text-secondary);
+}
+
+.att-history .att-done__list,
+.att-history .att-ok__list {
+  list-style: none;
+  margin: 0.375rem 0 0;
+  padding: 0;
+}
+
+.att-history .att-ok__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Próximas tutorías (resumen) */
+.agenda--resumen .agenda__list {
+  margin: 0;
+}
+
+.agenda--resumen .agenda-item {
+  padding: 0.5rem 0;
+}
+
+.agenda--resumen .agenda-item + .agenda-item {
+  border-top: 1px solid var(--border-color);
+}
+
+.agenda-item__day {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.agenda--resumen .dash-link--button {
+  margin-top: 0.25rem;
+  min-height: 36px;
+}
+
+/* ---------- Niveles 3 y 4: calidad y análisis ---------- */
+.dash-analysis {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dash-analysis__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.dash-analysis__title {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--text-heading);
+}
+
+.dash-analysis__filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-analysis__filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.q-tiles {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.q-tile {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.q-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.q-tile__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-label);
+}
+
+.q-tile__value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-heading);
+}
+
+.q-tile__scale {
+  margin-left: 0.125rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.q-tile__base {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.q-tile__warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--warning-text);
+}
+
+.q-dist {
+  margin-top: 0.625rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.demand__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.demand .rank {
+  margin: 0;
+}
+
+/* Docentes: top 5 */
+.people__criterio {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.375rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.people__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.people__row {
+  display: grid;
+  grid-template-columns: 1rem auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0;
+}
+
+.people__row + .people__row {
+  border-top: 1px solid var(--border-color);
+}
+
+.people__rank {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.people__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.people__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.people__rol {
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+}
+
+.people__warn {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.people__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 3.25rem;
+}
+
+.people__stat strong {
+  font-size: 0.9375rem;
+  color: var(--text-heading);
+}
+
+.people__stat-label {
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.people__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 1rem;
+  margin-top: 0.375rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.people__foot .dash-link,
+.people__foot .dash-link--button {
+  min-height: 40px;
+}
+
+.dash--embebido {
+  max-width: none;
+  max-height: min(60vh, 34rem);
+  overflow: auto;
+  border-radius: 8px;
+}
+
+/* Táctil: objetivos de 44 px en tableta y móvil */
+@media (max-width: 1023px) {
+  .att-item__toggle,
+  .att-item__link,
+  .att-history__toggle,
+  .hint__btn {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .agenda--resumen .dash-link--button,
+  .people__foot .dash-link,
+  .people__foot .dash-link--button {
+    min-height: 44px;
+  }
+}
+
+/* Contenido plegado: el atributo hidden manda sobre display: grid/flex */
+.dash [hidden],
+.ui-modal [hidden] {
+  display: none !important;
+}

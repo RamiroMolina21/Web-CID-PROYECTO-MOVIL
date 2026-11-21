@@ -50,8 +50,8 @@ test.describe('Vistas personales @responsive', () => {
 test.describe.serial('Flujo agendar → cupos → finalizar', () => {
   /** @type {Awaited<ReturnType<typeof apiComo>>} */
   let admin
-  let h1 // cupos 2: flujo principal
-  let h2 // cupos 3: carrera "horario ya no disponible"
+  let h1 // flujo principal (la tutoría se agenda con 2 cupos)
+  let h2 // carrera "horario ya no disponible"
   let tutoriaId
   let tutoriaAjenaId
   const tema = `${PREFIJO} E2E ${sello}`
@@ -62,8 +62,8 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     requireRole(test, 'docente')
     requireRole(test, 'tutor')
     admin = await apiComo(playwright, 'admin')
-    h1 = await crearHorarioPrueba(admin, { titulo: `Agenda ${sello}`, fecha: fechaEnDias(20), cupos: '2', usuarioId: ID.docente })
-    h2 = await crearHorarioPrueba(admin, { titulo: `Carrera ${sello}`, fecha: fechaEnDias(21), horaInicio: '10:00', horaFin: '11:00', cupos: '3', usuarioId: ID.docente })
+    h1 = await crearHorarioPrueba(admin, { titulo: `Agenda ${sello}`, fecha: fechaEnDias(20), usuarioId: ID.docente })
+    h2 = await crearHorarioPrueba(admin, { titulo: `Carrera ${sello}`, fecha: fechaEnDias(21), horaInicio: '10:00', horaFin: '11:00', usuarioId: ID.docente })
   })
 
   test.afterAll(async () => {
@@ -78,10 +78,14 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     await login(page, 'docente')
     await expect(page).toHaveURL(/\/agenda$/)
 
-    const fila = page.locator('.slot').filter({ hasText: `Agenda ${sello}` })
-    await expect(fila).toBeVisible()
-    await expect(fila).toContainText('2 cupos')
-    await fila.getByRole('link', { name: 'Agendar tutoría' }).click()
+    // Vista de disponibilidad: la fecha del horario [PRUEBA] lleva su franja; ya no muestra cupos (se definen al agendar)
+    const enlace = page.locator(`a[href="/agenda/${h1.idHorario}/agendar"]`)
+    for (let i = 0; i < 20 && !(await enlace.count()); i++) {
+      await page.getByRole('button', { name: /fechas más/ }).click()
+    }
+    const fila = page.locator('.disp-lista > li').filter({ has: enlace })
+    await expect(fila).not.toContainText(/cupos/i)
+    await enlace.click()
     await expect(page).toHaveURL(new RegExp(`/agenda/${h1.idHorario}/agendar$`))
 
     // Paso 1: validaciones y datos
@@ -99,6 +103,17 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     await page.getByRole('button', { name: /Continuar/ }).click()
     await expect(page.getByText('Elige quién impartirá la tutoría.')).toBeVisible()
     await page.getByLabel('Tutor o docente').selectOption(String(ID.tutor))
+    // Cupos máximos: obligatorio, por defecto 5, entero 1–1000 con error junto al campo
+    const cupos = page.getByLabel('Cupos máximos')
+    await expect(cupos).toHaveValue('5')
+    await cupos.fill('1001')
+    await page.getByRole('button', { name: /Continuar/ }).click()
+    await expect(page.locator('#f-cupos-error')).toHaveText('Debe ser un número entero entre 1 y 1000.')
+    await expect(cupos).toBeFocused()
+    await cupos.fill('')
+    await page.getByRole('button', { name: /Continuar/ }).click()
+    await expect(page.locator('#f-cupos-error')).toHaveText('Indica los cupos máximos.')
+    await cupos.fill('2')
     await page.getByRole('button', { name: /Continuar/ }).click()
 
     // Paso 3: un estudiante (cupo 2)
@@ -116,6 +131,7 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     const body = resp.request().postDataJSON()
     expect(body).toMatchObject({ estado: 'Pendiente', usuarioId: ID.tutor, horarioId: h1.idHorario, modalidad: 'Virtual' })
     expect(body.estudianteIds).toHaveLength(1)
+    expect(body.cupos).toBe(2)
     expect(body.fechaTutoria).toMatch(/^\d{4}-\d{2}-\d{2}T08:00:00$/)
     // Atómico: no hay POST /estudiantes separado
     expect(calls.some((c) => c.method === 'POST' && /\/Tutoria\/\d+\/estudiantes$/.test(c.path))).toBeFalsy()
@@ -151,15 +167,21 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     await expect(dialog.locator('.picker__item').filter({ hasText: 'Daniela' })).toHaveCount(0) // excluye asignados
     await dialog.locator('.picker__item').filter({ hasText: 'Sebastián' }).click()
 
-    // Otro usuario reduce el cupo del horario mientras el diálogo está abierto → el servidor responde 409
-    const put = await admin.put(`/Horario/${h1.idHorario}`, { ...h1, estado: 'Ocupado', cupos: '1' })
+    // Otro usuario reduce el cupo de la tutoría mientras el diálogo está abierto → el servidor responde 409
+    const actual = (await admin.get(`/Tutoria/${tutoriaId}`)).body
+    const putTutoria = (cupos) => admin.put(`/Tutoria/${tutoriaId}`, {
+      idioma: actual.idioma, nivel: actual.nivel, tema: actual.tema, modalidad: actual.modalidad, estado: actual.estado,
+      fechaTutoria: actual.fechaTutoria, usuarioId: actual.usuarioId, horarioId: actual.horarioId, cupos,
+    })
+    expect(actual.cupos).toBe(2)
+    const put = await putTutoria(1)
     expect(put.status).toBe(200)
     await dialog.getByRole('button', { name: 'Agregar seleccionados' }).click()
     await expect(dialog.getByRole('alert')).toContainText(/Cupo completo: 1 de 1 ocupados/)
     await dialog.getByRole('button', { name: 'Cancelar' }).click()
 
     // Se restablece el cupo y ahora sí se completa (2 de 2) → botón deshabilitado
-    expect((await admin.put(`/Horario/${h1.idHorario}`, { ...h1, estado: 'Ocupado', cupos: '2' })).status).toBe(200)
+    expect((await putTutoria(2)).status).toBe(200)
     await page.reload()
     await page.getByRole('button', { name: 'Agregar estudiantes' }).click()
     await dialog.locator('.picker__item').filter({ hasText: 'Sebastián' }).click()
@@ -167,6 +189,8 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     await expect(dialog).toBeHidden()
     await expect(page.getByText('2 de 2 ocupados')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Agregar estudiantes' })).toBeDisabled()
+    // Contrato: reducir los cupos por debajo de los inscritos → 409
+    expect((await putTutoria(1)).status).toBe(409)
   })
 
   test('D-E10 horario ocupado por otro durante el asistente → 409 visible', async ({ page }) => {
@@ -178,12 +202,13 @@ test.describe.serial('Flujo agendar → cupos → finalizar', () => {
     await page.getByRole('radio', { name: 'Presencial' }).check()
     await page.getByRole('button', { name: /Continuar/ }).click()
     await page.getByRole('button', { name: 'Asignarme a mí' }).click()
+    await page.getByLabel('Cupos máximos').fill('3')
     await page.getByRole('button', { name: /Continuar/ }).click()
 
     // El Administrador reserva el mismo horario (asignado al Docente) antes de que el Docente guarde
     const otra = await admin.post('/Tutoria', {
       idioma: 'Francés', nivel: 'A2', tema: `${PREFIJO} Reserva admin ${sello}`, modalidad: 'Virtual', estado: 'Pendiente',
-      fechaTutoria: `${fechaEnDias(21)}T10:00:00`, usuarioId: ID.docente, horarioId: h2.idHorario,
+      fechaTutoria: `${fechaEnDias(21)}T10:00:00`, usuarioId: ID.docente, horarioId: h2.idHorario, cupos: 3,
     })
     expect(otra.status).toBe(201)
     tutoriaAjenaId = otra.body.idTutoria

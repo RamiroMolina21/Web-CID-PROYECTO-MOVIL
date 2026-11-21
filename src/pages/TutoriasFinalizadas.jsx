@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { aulaLimpia } from '../lib/aula'
 import { tutoriaService } from '../services/apiService'
 import { useData } from '../context/DataContext'
 import TutoriaFinalizadaDetailModal from '../components/TutoriaFinalizadaDetailModal'
@@ -172,7 +173,7 @@ const TutoriasFinalizadas = () => {
             const fechaTutoria = getProp(tutoria, 'fechaTutoria', 'fecha', 'FechaTutoria', 'Fecha')
             const usuarioNombre = getProp(tutoria, 'usuarioNombre', 'UsuarioNombre') || ''
             const usuarioApellidos = getProp(tutoria, 'usuarioApellidos', 'UsuarioApellidos') || ''
-            const horarioEspacio = getProp(tutoria, 'horarioEspacio', 'HorarioEspacio', 'espacio', 'Espacio') || ''
+            const horarioEspacio = aulaLimpia(getProp(tutoria, 'horarioEspacio', 'HorarioEspacio', 'espacio', 'Espacio'))
             const horarioHoraInicio = getProp(tutoria, 'horarioHoraInicio', 'HorarioHoraInicio', 'horaInicio', 'HoraInicio')
             const horarioHoraFin = getProp(tutoria, 'horarioHoraFin', 'HorarioHoraFin', 'horaFin', 'HoraFin')
             const estudiantes = getProp(tutoria, 'estudiantes', 'Estudiantes') || []

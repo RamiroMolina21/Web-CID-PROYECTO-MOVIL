@@ -167,3 +167,21 @@
   transform: none;
 }
 
+
+/* Cupos máximos: ayuda y error junto al campo */
+.formulario-tutoria .ft-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.formulario-tutoria .ft-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--error-text);
+}
+
+.formulario-tutoria .form-input[aria-invalid='true'] {
+  border-color: var(--error-text);
+}

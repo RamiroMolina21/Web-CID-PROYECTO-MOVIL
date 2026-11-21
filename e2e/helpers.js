@@ -171,15 +171,16 @@ export const fechaEnDias = (dias) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-/** Crea un horario [PRUEBA] del Docente por la API (como Administrador). */
-export const crearHorarioPrueba = async (admin, { titulo, fecha, horaInicio = '08:00', horaFin = '09:00', cupos = '2', usuarioId }) => {
+/** Crea un horario [PRUEBA] del Docente por la API (como Administrador). Sin cupos salvo que se indiquen. */
+export const crearHorarioPrueba = async (admin, { titulo, fecha, horaInicio = '08:00', horaFin = '09:00', cupos, usuarioId }) => {
   const r = await admin.post('/Horario', {
     titulo: `${PREFIJO} ${titulo}`,
     fechaInicio: `${fecha}T00:00:00`,
     fechaFin: `${fecha}T23:59:59`,
     horaInicio: `${fecha}T${horaInicio}:00`,
     horaFin: `${fecha}T${horaFin}:00`,
-    cupos,
+    // Contrato: cupos del horario opcional (la capacidad va en la tutoría); solo se envía si el test lo pide
+    ...(cupos !== undefined ? { cupos } : {}),
     espacio: `${PREFIJO} Sala E2E`,
     estado: 'Disponible',
     usuarioId,

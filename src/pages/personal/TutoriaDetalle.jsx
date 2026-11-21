@@ -15,6 +15,7 @@ import { formatDiaLargo, formatFecha, formatRangoHoras, formatHora, parseLocal }
 import { getUserId, iniciales, nombreCompleto } from '../../lib/roles'
 import { nombreAsignado, nombreAutor, nombreDuenoHorario } from '../../lib/usuarios'
 import './personal.css'
+import { aulaTexto } from '../../lib/aula'
 
 const valor = (v) => (v && v !== 'N/A' ? v : '—')
 
@@ -72,7 +73,7 @@ const AgregarEstudiantesModal = ({ open, onClose, tutoriaId, asignados, cupos, o
       description={
         restantes != null
           ? `Quedan ${restantes} de ${cupos} cupos en esta tutoría.`
-          : 'Este horario no tiene límite de cupos.'
+          : 'Esta tutoría no tiene límite de cupos.'
       }
       size="lg"
       dismissable={!guardando}
@@ -194,7 +195,8 @@ const TutoriaDetalle = ({ soloLectura = false }) => {
 
   const { tutoria, estudiantes } = data
   const permisos = permisosTutoria(user, tutoria)
-  const cupos = parseCupos(tutoria.horarioCupos)
+  // Capacidad efectiva: cupos de la tutoría → cupos del horario (tutorías antiguas) → sin límite
+  const cupos = parseCupos(tutoria.cupos) ?? parseCupos(tutoria.horarioCupos)
   const ocupados = estudiantes.length
   const lleno = cupos != null && ocupados >= cupos
   const finalizada = grupoEstadoTutoria(tutoria.estado) === 'finalizada'
@@ -254,7 +256,7 @@ const TutoriaDetalle = ({ soloLectura = false }) => {
               <dt>Hora</dt>
               <dd>{tieneHorario ? formatRangoHoras(tutoria.horarioHoraInicio, tutoria.horarioHoraFin) : formatHora(tutoria.fechaTutoria)}</dd>
             </div>
-            <div><dt>Espacio</dt><dd>{valor(tutoria.horarioEspacio)}</dd></div>
+            <div><dt>Aula</dt><dd>{aulaTexto(tutoria.horarioEspacio)}</dd></div>
             <div><dt>Modalidad</dt><dd>{valor(tutoria.modalidad)}</dd></div>
             <div><dt>Horario</dt><dd>{valor(tutoria.horarioTitulo)}</dd></div>
             <div>

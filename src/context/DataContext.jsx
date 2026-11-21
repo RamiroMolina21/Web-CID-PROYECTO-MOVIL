@@ -200,7 +200,9 @@ const mapHorarioFromAPI = (apiHorario) => {
     estado: apiHorario.estado || apiHorario.Estado || 'Disponible',
     // [+] Dueño eliminado: el horario se conservó porque tiene tutorías (usuarioId null)
     sinDueno: 'usuarioId' in apiHorario && apiHorario.usuarioId === null,
-    cuposDisponibles: parseInt(apiHorario.cupos, 10) || apiHorario.cuposDisponibles || 5,
+    // Cupos ya no se definen en el horario (contrato: POST/PUT /Horario cupos opcional, "" = sin definir).
+    // Se conserva el valor de horarios antiguos solo como respaldo de capacidad (null = sin límite).
+    cuposDisponibles: parseInt(apiHorario.cupos, 10) > 0 ? parseInt(apiHorario.cupos, 10) : null,
     tipoClase: apiHorario.tipoClase || 'Presencial',
     salon: apiHorario.espacio || apiHorario.salon || '',
     notas: apiHorario.notas || '',
@@ -329,14 +331,9 @@ const mapHorarioToAPI = (frontendHorario, docenteData = null) => {
   const fechaInicioDateTime = `${fecha}T00:00:00`
   const fechaFinDateTime = `${fechaFin}T23:59:59`
 
-  // Obtener cupos como número primero
-  const cuposNum = frontendHorario.cuposDisponibles ? parseInt(frontendHorario.cuposDisponibles) : 5
 
-  // Validar que el espacio no esté vacío (el DTO lo requiere)
-  const espacio = (frontendHorario.salon || '').trim()
-  if (!espacio) {
-    throw new Error('El campo Salón es obligatorio')
-  }
+  // Aula opcional (contrato: null/""/ausente = sin aula; máx. 60). Vacío se envía como null.
+  const espacio = (frontendHorario.salon || '').trim() || null
 
   // Validar que docenteId esté presente (el DTO lo requiere)
   if (!docenteId) {
@@ -351,7 +348,7 @@ const mapHorarioToAPI = (frontendHorario, docenteData = null) => {
     FechaFin: fechaFinDateTime,        // DateTime (fin del día)
     HoraInicio: fechaHoraInicio,       // DateTime (hora específica de inicio)
     HoraFin: fechaHoraFin,             // DateTime (hora específica de fin)
-    Cupos: String(cuposNum),           // VARCHAR en la BD
+    // Cupos: ya no se envía; la capacidad se define al agendar la tutoría (TutoriaCreate.cupos)
     Espacio: espacio,
     Estado: 'Disponible',
     UsuarioId: docenteId               // Campo requerido por el DTO
@@ -494,7 +491,10 @@ const mapTutoriaFromAPI = (apiTutoria) => {
     notas: apiTutoria.notas || '',
     // [+] Campos del contrato (TutoriaResponse fase 2) usados por el Dashboard. Solo lectura.
     // horarioCupos: int o null (= sin límite). Ocupados = estudiantes.length.
-    cupos: Number.isInteger(apiTutoria.horarioCupos) && apiTutoria.horarioCupos > 0 ? apiTutoria.horarioCupos : null,
+    // Capacidad efectiva: tutoria.cupos → horarioCupos (tutorías antiguas) → null (sin límite).
+    cupos: Number.isInteger(apiTutoria.cupos) && apiTutoria.cupos > 0
+      ? apiTutoria.cupos
+      : Number.isInteger(apiTutoria.horarioCupos) && apiTutoria.horarioCupos > 0 ? apiTutoria.horarioCupos : null,
     // [+] Usuario eliminado (contrato "Datos desvinculados"): usuarioId null = tutoría sin asignar;
     // horarioUsuarioId null = el dueño del horario ya no existe.
     sinAsignar: 'usuarioId' in apiTutoria && apiTutoria.usuarioId === null,
@@ -578,6 +578,13 @@ const mapTutoriaToAPI = (frontendTutoria) => {
     modalidad: frontendTutoria.modalidad.trim(),
     estado: frontendTutoria.estado || 'Pendiente',
     fechaTutoria: fechaTutoria, // DateTime en formato ISO: YYYY-MM-DDTHH:mm:ss
+  }
+
+  // Cupos máximos de la tutoría (contrato: entero 1–1000; obligatorio en POST, opcional en PUT)
+  if (frontendTutoria.cuposMax !== undefined && frontendTutoria.cuposMax !== null && frontendTutoria.cuposMax !== '') {
+    const c = Number(frontendTutoria.cuposMax)
+    if (!Number.isInteger(c) || c < 1 || c > 1000) throw new Error('Los cupos máximos deben ser un entero entre 1 y 1000.')
+    tutoriaData.cupos = c
   }
 
   // HorarioId es requerido por el backend - validar que esté presente
